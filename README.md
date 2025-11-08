@@ -90,7 +90,7 @@ These steps allow you to recreate the whole WSL environment. Before proceeding, 
 - Type this (change the value of `GITHUB_USERNAME` if it's not the same as your WSL username):
 ```bash
 GITHUB_USERNAME=$USER bash -c \
-  "$(curl -fsSL 'https://raw.githubusercontent.com/romkatv/dotfiles-public/master/bin/bootstrap-machine.sh')"
+  "$(curl -fsSL 'https://raw.githubusercontent.com/auspbro/dotfiles-public/master/bin/bootstrap-machine.sh')"
 ```
 - Say `Yes` when prompted to terminate WSL.
 - Run *Start > Windows Terminal*.
