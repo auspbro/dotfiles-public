@@ -101,6 +101,13 @@ These steps allow you to recreate the whole WSL environment. Before proceeding, 
 - When prompted, create a new user.
 - Type this (change the value of `GITHUB_USERNAME` if it's not the same as your WSL username):
 ```bash
+# check if github connect work
+curl -I https://github.com
+curl -v https://github.com
+
+# check if ssh connect work
+ssh -T git@github.com 
+
 GITHUB_USERNAME=$USER bash -c \
   "$(curl -fsSL 'https://raw.githubusercontent.com/auspbro/dotfiles-public/master/bin/bootstrap-machine.sh')"
 ```
