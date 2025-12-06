@@ -19,13 +19,13 @@ This needs to be done once per user.
 - Backup `rsa_id` in a secure persistent storage system. For example, in your password manager.
 
 ```bash
-# 1.生成新 SSH 密钥
+# 1.new generate SSH key
 ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
-# 2.在后台启动ssh代理
+# 2.start ssh-agent in background
 eval "$(ssh-agent -s)"
-# 3.将 SSH 密钥添加到 ssh-agent
+# 3.add SSH key to ssh-agent
 ssh-add ~/.ssh/id_rsa
-# 4.将 SSH 公钥添加到 GitHub 上的帐户。
+# 4.add SSH public key to GitHub account
 https://docs.github.com/zh/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account
 ```
 ### Windows Setup
