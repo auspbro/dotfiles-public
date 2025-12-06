@@ -98,16 +98,22 @@ These steps allow you to recreate the whole WSL environment. Before proceeding, 
   wsl.exe --set-default-version 1
   wsl.exe --install -d Ubuntu-22.04
   ```
-- When prompted, create a new user.
-- Type this (change the value of `GITHUB_USERNAME` if it's not the same as your WSL username):
+- When prompted, create a new user. and check if github connect work
 ```bash
-# check if github connect work
 curl -I https://github.com
 curl -v https://github.com
+```
+- check if ssh connect work `ssh -T git@github.com`, if not, add this to your ~/.ssh/config
 
-# check if ssh connect work
-ssh -T git@github.com 
-
+```bash
+Host github.com
+  Hostname ssh.github.com
+  Port 443
+  User git
+  IdentityFile ~/.ssh/id_rsa
+```
+- Type this (change the value of `GITHUB_USERNAME` if it's not the same as your WSL username):
+```bash
 GITHUB_USERNAME=$USER bash -c \
   "$(curl -fsSL 'https://raw.githubusercontent.com/auspbro/dotfiles-public/master/bin/bootstrap-machine.sh')"
 ```
