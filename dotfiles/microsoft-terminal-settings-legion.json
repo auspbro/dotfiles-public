@@ -1,0 +1,267 @@
+{
+    "$help": "https://aka.ms/terminal-documentation",
+    "$schema": "https://aka.ms/terminal-profiles-schema",
+    "actions": 
+    [
+        {
+            "command": "togglePaneZoom",
+            "id": "User.togglePaneZoom"
+        },
+        {
+            "command": 
+            {
+                "action": "wt",
+                "commandline": "new-tab pwsh.exe ; split-pane -p \"Command Prompt\" -d C:\\ ; split-pane -p \"Ubuntu\" -H"
+            },
+            "id": "User.wt.2C74B37F"
+        },
+        {
+            "command": 
+            {
+                "action": "multipleActions",
+                "actions": 
+                [
+                    {
+                        "action": "newTab",
+                        "colorScheme": "Solarized Dark",
+                        "profile": "Ubuntu"
+                    },
+                    {
+                        "action": "splitPane",
+                        "colorScheme": "Campbell",
+                        "profile": "Ubuntu",
+                        "split": "right"
+                    },
+                    {
+                        "action": "splitPane",
+                        "colorScheme": "Tango Dark",
+                        "profile": "Ubuntu",
+                        "split": "down"
+                    },
+                    {
+                        "action": "moveFocus",
+                        "direction": "first"
+                    }
+                ]
+            },
+            "id": "User.multipleActions.3561DC59"
+        },
+        {
+            "command": "toggleFocusMode",
+            "id": "User.toggleFocusMode"
+        }
+    ],
+    "centerOnLaunch": true,
+    "copyFormatting": "none",
+    "copyOnSelect": false,
+    "defaultProfile": "{17bf3de4-5353-5709-bcf9-835bd952a95e}",
+    "keybindings": 
+    [
+        {
+            "id": "User.globalSummon.A1BA4FE8",
+            "keys": "f10"
+        },
+        {
+            "id": "User.togglePaneZoom",
+            "keys": "alt+z"
+        },
+        {
+            "id": "User.wt.2C74B37F",
+            "keys": "ctrl+shift+o"
+        },
+        {
+            "id": "Terminal.CopyToClipboard",
+            "keys": "ctrl+c"
+        },
+        {
+            "id": "Terminal.PasteFromClipboard",
+            "keys": "ctrl+v"
+        },
+        {
+            "id": "Terminal.DuplicatePaneAuto",
+            "keys": "alt+shift+d"
+        },
+        {
+            "id": "Terminal.MoveFocusRight",
+            "keys": "alt+l"
+        },
+        {
+            "id": "Terminal.MoveFocusDown",
+            "keys": "alt+j"
+        },
+        {
+            "id": null,
+            "keys": "alt+down"
+        },
+        {
+            "id": "Terminal.MoveFocusLeft",
+            "keys": "alt+h"
+        },
+        {
+            "id": null,
+            "keys": "alt+left"
+        },
+        {
+            "id": null,
+            "keys": "alt+right"
+        },
+        {
+            "id": "Terminal.MoveFocusUp",
+            "keys": "alt+k"
+        },
+        {
+            "id": null,
+            "keys": "alt+up"
+        },
+        {
+            "id": "User.multipleActions.3561DC59",
+            "keys": "ctrl+shift+l"
+        },
+        {
+            "id": "User.toggleFocusMode",
+            "keys": "alt+f"
+        }
+    ],
+    "launchMode": "default",
+    "minimizeToNotificationArea": false,
+    "newTabMenu": 
+    [
+        {
+            "type": "remainingProfiles"
+        }
+    ],
+    "profiles": 
+    {
+        "defaults": {},
+        "list": 
+        [
+            {
+                "commandline": "%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+                "guid": "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
+                "hidden": false,
+                "name": "Windows PowerShell"
+            },
+            {
+                "commandline": "%SystemRoot%\\System32\\cmd.exe",
+                "guid": "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}",
+                "hidden": false,
+                "name": "Command Prompt"
+            },
+            {
+                "guid": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+                "hidden": false,
+                "name": "PowerShell",
+                "source": "Windows.Terminal.PowershellCore"
+            },
+            {
+                "adjustIndistinguishableColors": "indexed",
+                "colorScheme": "Tango Dark",
+                "commandline": "wsl -d Ubuntu-22.04 ",
+                "font": 
+                {
+                    "face": "MesloLGS NF",
+                    "size": 10
+                },
+                "guid": "{17bf3de4-5353-5709-bcf9-835bd952a95e}",
+                "hidden": false,
+                "intenseTextStyle": "bold",
+                "name": "Ubuntu-22.04",
+                "scrollbarState": "hidden",
+                "source": "Windows.Terminal.Wsl"
+            },
+            {
+                "colorScheme": "Campbell",
+                "font": 
+                {
+                    "face": "MesloLGS NF",
+                    "size": 11
+                },
+                "guid": "{58ad8b0c-3ef8-5f4d-bc6f-13e4c00f2530}",
+                "hidden": false,
+                "intenseTextStyle": "bold",
+                "name": "Debian",
+                "scrollbarState": "hidden",
+                "source": "Windows.Terminal.Wsl"
+            },
+            {
+                "guid": "{b453ae62-4e3d-5e58-b989-0a998ec441b8}",
+                "hidden": false,
+                "name": "Azure Cloud Shell",
+                "source": "Windows.Terminal.Azure"
+            },
+            {
+                "guid": "{8b7108bd-93cb-5902-aec1-3aa10b22308c}",
+                "hidden": false,
+                "name": "Developer Command Prompt for VS 2022",
+                "source": "Windows.Terminal.VisualStudio"
+            },
+            {
+                "guid": "{fc42d580-07ad-5dfd-b578-64117e5939bf}",
+                "hidden": false,
+                "name": "Developer PowerShell for VS 2022",
+                "source": "Windows.Terminal.VisualStudio"
+            },
+            {
+                "guid": "{2ece5bfe-50ed-5f3a-ab87-5cd4baafed2b}",
+                "hidden": false,
+                "name": "Git Bash",
+                "source": "Git"
+            },
+            {
+                "adjustIndistinguishableColors": "indexed",
+                "colorScheme": "Solarized Dark",
+                "commandline": "C:\\WINDOWS\\system32\\wsl.exe -d Ubuntu-22.04 --exec zsh -l",
+                "experimental.retroTerminalEffect": false,
+                "font": 
+                {
+                    "builtinGlyphs": true,
+                    "face": "MesloLGS NF",
+                    "size": 11
+                },
+                "guid": "{4ff56d04-d9cf-57ea-bae2-ad396374e7e3}",
+                "hidden": false,
+                "icon": "ms-appx:///ProfileIcons/{9acb9455-ca41-5af7-950f-6bca1bc9722f}.png",
+                "intenseTextStyle": "bold",
+                "name": "Ubuntu 22.04.5 LTS",
+                "scrollbarState": "hidden",
+                "source": "CanonicalGroupLimited.Ubuntu22.04LTS_79rhkp1fndgsc",
+                "startingDirectory": "~",
+                "useAcrylic": false
+            },
+            {
+                "guid": "{cda05630-c3dc-5a0b-8633-ce1333873029}",
+                "hidden": false,
+                "name": "Ubuntu-24.04",
+                "source": "Microsoft.WSL"
+            }
+        ]
+    },
+    "schemes": 
+    [
+        {
+            "background": "#002B36",
+            "black": "#002B36",
+            "blue": "#268BD2",
+            "brightBlack": "#073642",
+            "brightBlue": "#839496",
+            "brightCyan": "#93A1A1",
+            "brightGreen": "#756708",
+            "brightPurple": "#6C71C4",
+            "brightRed": "#CB4B16",
+            "brightWhite": "#FDF6E3",
+            "brightYellow": "#657B83",
+            "cursorColor": "#FFFFFF",
+            "cyan": "#2AA198",
+            "foreground": "#839496",
+            "green": "#859900",
+            "name": "Solarized Dark (Copy)",
+            "purple": "#D33682",
+            "red": "#DC322F",
+            "selectionBackground": "#FFFFFF",
+            "white": "#EEE8D5",
+            "yellow": "#B58900"
+        }
+    ],
+    "tabWidthMode": "titleLength",
+    "themes": []
+}

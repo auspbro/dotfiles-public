@@ -18,6 +18,16 @@ This needs to be done once per user.
 - Generate a pair of ssh keys -- `rsa_id` and `rsa_id.pub` -- and add `rsa_id.pub` to github.com. See https://help.github.com/en/articles/connecting-to-github-with-ssh for details. Use a strong passphrase.
 - Backup `rsa_id` in a secure persistent storage system. For example, in your password manager.
 
+```bash
+# 1.生成新 SSH 密钥
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+# 2.在后台启动ssh代理
+eval "$(ssh-agent -s)"
+# 3.将 SSH 密钥添加到 ssh-agent
+ssh-add ~/.ssh/id_rsa
+# 4.将 SSH 公钥添加到 GitHub 上的帐户。
+https://docs.github.com/zh/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account
+```
 ### Windows Setup
 
 #### Windows Preparation
@@ -44,6 +54,8 @@ Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-L
 - Open *PowerShell* as *Administrator* and run:
 ```powershell
 choco.exe install -y microsoft-windows-terminal vcxsrv
+## Or use winget in Windows 11 (24h2)
+winget install vcxsrv
 ```
 - Run *Start > XLaunch*.
   - Click *Next*.
@@ -90,9 +102,12 @@ These steps allow you to recreate the whole WSL environment. Before proceeding, 
 - Type this (change the value of `GITHUB_USERNAME` if it's not the same as your WSL username):
 ```bash
 GITHUB_USERNAME=$USER bash -c \
-  "$(curl -fsSL 'https://raw.githubusercontent.com/romkatv/dotfiles-public/master/bin/bootstrap-machine.sh')"
+  "$(curl -fsSL 'https://raw.githubusercontent.com/xuex1x/dotfiles-public/master/bin/bootstrap-machine.sh')"
 ```
 - Say `Yes` when prompted to terminate WSL.
+- Run *Start > Windows Terminal*.
+  - Press <kbd>Ctrl+,</kbd>
+  - Change *Profiles > Ubuntu-22.04 > Appearance > Text Formatting > Intense text style* to *"Bold font"*
 - Run *Start > Windows Terminal*.
   - Press <kbd>Ctrl+Shift+,</kbd>.
   - Replace the content of `settings.json` with [this](https://raw.githubusercontent.com/romkatv/dotfiles-public/master/dotfiles/microsoft-terminal-settings.json). Change "romkatv" to your WSL username.

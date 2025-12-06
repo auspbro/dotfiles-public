@@ -117,7 +117,8 @@ function install_packages() {
     dos2unix
     g++
     gawk
-    gedit
+    
+    # gedit
     git
     gnome-icon-theme
     gzip
@@ -131,11 +132,11 @@ function install_packages() {
     man
     meld
     moreutils
-    nano
+    # nano
     openssh-server
-    p7zip-full
-    p7zip-rar
-    perl
+    # p7zip-full
+    # p7zip-rar
+    # perl
     poppler-utils
     python3
     python3-pip
@@ -152,19 +153,40 @@ function install_packages() {
     yodl
     zip
     zsh
+    tmux
+    vim
+    vim-gtk3
   )
 
   if (( WSL )); then
     packages+=(dbus-x11)
   else
-    packages+=(gnome-tweak-tool imagemagick iotop tilix remmina wireguard docker.io)
+    packages+=(gnome-tweak-tool imagemagick iotop tilix remmina wireguard )
   fi
 
   sudo apt-get update
-  sudo bash -c 'DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::options::=--force-confdef -o DPkg::options::=--force-confold upgrade -y'
+  # sudo bash -c 'DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::options::=--force-confdef -o DPkg::options::=--force-confold upgrade -y'
   sudo apt-get install -y "${packages[@]}"
   sudo apt-get autoremove -y
   sudo apt-get autoclean
+}
+
+# Install a bunch of rpm packages.
+function install_packages_rpm() {
+  local packages=(
+  vim-X11
+  )
+
+  if (( WSL )); then
+    packages+=(dbus-x11)
+  else
+    packages+=(iotop )
+  fi
+
+  sudo yum install -y "${packages[@]}" 
+  sudo yum autoremove -y            
+  sudo yum clean all      
+
 }
 
 function install_b2() {
@@ -355,15 +377,27 @@ function install_fonts() {
 }
 
 function add_to_sudoers() {
-  # This is to be able to create /etc/sudoers.d/"$username".
-  if [[ "$USER" == *'~' || "$USER" == *.* ]]; then
-    >&2 echo "$BASH_SOURCE: invalid username: $USER"
-    exit 1
-  fi
+    # This is to be able to create /etc/sudoers.d/"$username".
+    if [[ "$USER" == *'~' || "$USER" == *.* ]]; then
+      >&2 echo "$BASH_SOURCE: invalid username: $USER"
+      exit 1
+    fi
+ 
 
-  sudo usermod -aG sudo "$USER"
-  sudo tee /etc/sudoers.d/"$USER" <<<"$USER ALL=(ALL) NOPASSWD:ALL" >/dev/null
-  sudo chmod 440 /etc/sudoers.d/"$USER"
+   if [[ "$ID" =~ (debian|ubuntu) ]]; then
+     sudo usermod -aG sudo "$USER"
+   elif [[ "$ID" =~ (rhel|fedora|centos|rocky|almalinux|openEuler) ]]; then
+     sudo usermod -aG wheel "$USER"
+   else
+     eco "Not support yet, ID: $ID, ID_LIKE: $ID_LIKE"
+   fi
+     
+   sudo tee /etc/sudoers.d/"$USER" <<<"$USER ALL=(ALL) NOPASSWD:ALL" >/dev/null
+   sudo tee -a /etc/sudoers.d/"$USER" <<<'Defaults env_keep += "http_proxy https_proxy ftp_proxy rsync_proxy"' >/dev/null
+   sudo tee -a /etc/sudoers.d/"$USER" <<<'Defaults env_keep += "HTTP_PROXY HTTPS_PROXY FTP_PROXY RSYNC_PROXY"' >/dev/null
+   sudo tee -a /etc/sudoers.d/"$USER" <<<'Defaults env_keep += "no_proxy NO_PROXY"' >/dev/null
+   sudo chmod 440 /etc/sudoers.d/"$USER"
+
 }
 
 function fix_dbus() {
@@ -386,7 +420,7 @@ function patch_ssh() {
 }
 
 function enable_sshd() {
-  sudo tee /etc/ssh/sshd_config >/dev/null <<\END
+  sudo tee /etc/ssh/sshd_config >/dev/null <<'END'
 ClientAliveInterval 60
 AcceptEnv TERM
 X11Forwarding no
@@ -457,6 +491,183 @@ function install_locale() {
   sudo update-locale
 }
 
+
+function setup_tmux() {
+    printf "Setting up tmux...\n"
+    if ! command -v tmux &> /dev/null; then
+        printf "\033[33mtmux is not installed. Please install it first, e.g., 'sudo apt install tmux' or 'brew install tmux'.\033[0m\n"
+        return 0 # Not a fatal error, just skip
+    fi
+
+    local TPM_DIR="$HOME/.tmux/plugins/tpm"
+    if [ -d "$TPM_DIR" ]; then
+        printf "Tmux Plugin Manager (TPM) is already installed.\n"
+    else
+        printf "Installing Tmux Plugin Manager (TPM)...\n"
+        if ! git clone https://github.com/tmux-plugins/tpm "$TPM_DIR"; then
+            printf "\033[31mFailed to clone TPM repository.\033[0m\n"
+        fi
+    fi
+
+    # This check is now smarter. It ensures the TPM initialization line is present.
+    local TMUX_CONF="$HOME/.tmux.conf"
+    local TPM_RUN_LINE="run '~/.tmux/plugins/tpm/tpm'"
+    if [ -f "$TMUX_CONF" ] && grep -q "$TPM_RUN_LINE" "$TMUX_CONF"; then
+        printf "tmux config ($TMUX_CONF) already seems to be configured for TPM.\n"
+    else
+        printf "\033[33m$TMUX_CONF is missing or not configured for TPM. Appending default TPM config.\033[0m\n"
+        # Appending ensures we don't overwrite a user's existing partial config.
+        cat << EOF >> "$TMUX_CONF"
+
+# --- Added by setup script ---
+# List of plugins
+set -g @plugin 'tmux-plugins/tpm'
+set -g @plugin 'tmux-plugins/tmux-sensible'
+set -g @plugin 'tmux-plugins/tmux-resurrect'
+
+# Initialize TMUX plugin manager (keep this line at the very bottom of tmux.conf)
+$TPM_RUN_LINE
+EOF
+    fi
+
+    printf "\033[32mTmux setup complete.\033[0m Start tmux and press \033[32m'Prefix + I'\033[0m to install plugins.\n"
+}
+
+function install_neovim() {
+    printf "Checking and installing Neovim...\n"
+
+    if command -v nvim &> /dev/null; then
+        # ... (version check logic remains the same) ...
+        local version_str=$(nvim --version | head -n 1 | cut -d ' ' -f 2)
+        if [[ "$(printf '%s\n' "v0.9.0" "${version_str}" | sort -V | head -n 1)" == "v0.9.0" ]]; then
+              printf "Neovim is already installed and meets the version requirement: $version_str\n"
+              return 0
+        fi
+    fi
+
+    printf "\033[33m[Warnning]\033[0m Neovim not found. Attempting to install the latest stable version...\n"
+    if [[ "$(uname)" == "Darwin" ]]; then
+        # ... (macOS logic remains the same) ...
+        if ! command -v brew &> /dev/null; then printf "\033[33m[Warnning]\033[0m Homebrew not found..."; fi
+        printf "Using Homebrew to install Neovim on macOS...\n"
+        if ! brew install neovim; then printf "\033[31mFailed to install Neovim via Homebrew.\033[0m\n"; fi
+
+    elif [[ "$(uname)" == "Linux" ]]; then
+        # --- Linux Installation with a robust PATH handling ---
+        local NVIM_INSTALL_DIR="$HOME/.local/bin"
+        local NVIM_APPIMAGE_PATH="$NVIM_INSTALL_DIR/nvim"
+        mkdir -p "$NVIM_INSTALL_DIR"
+
+        printf "Downloading the latest Neovim AppImage to $NVIM_APPIMAGE_PATH...\n"
+        if ! curl -fLo "$NVIM_APPIMAGE_PATH" "https://github.com/neovim/neovim/releases/download/stable/nvim-linux-x86_64.appimage"; then
+            printf "\033[31mFailed to download Neovim AppImage.Please check your network or the URL.\033[0m\n"
+        fi
+        chmod u+x "$NVIM_APPIMAGE_PATH"
+
+        # --- ELEGANT SOLUTION STARTS HERE ---
+
+        # 1. IMMEDIATE FIX: Update PATH for the CURRENT script execution.
+        # This ensures the verification step below will pass.
+        if [[ ":$PATH:" != *":$NVIM_INSTALL_DIR:"* ]]; then
+            printf "\033[32mAdding '$NVIM_INSTALL_DIR' to PATH for the current session.\033[0m\n"
+            export PATH="$NVIM_INSTALL_DIR:$PATH"
+        fi
+
+        # 2. PERSISTENT FIX: Add the PATH update to the user's shell config file.
+        local shell_config_file=""
+        local current_shell=$(basename "$SHELL")
+
+        if [ "$current_shell" = "zsh" ]; then
+            shell_config_file="$HOME/.zshrc"
+        elif [ "$current_shell" = "bash" ]; then
+            shell_config_file="$HOME/.bashrc"
+        fi
+
+        if [ -n "$shell_config_file" ] && [ -f "$shell_config_file" ]; then
+            # Add to config file only if the line doesn't already exist
+            local path_export_line="export PATH=\"\$HOME/.local/bin:\$PATH\""
+            if ! grep -qF "$path_export_line" "$shell_config_file"; then
+                printf "Adding PATH update to $shell_config_file for future sessions...\n"
+                echo -e "\n# Add ~/.local/bin to PATH for locally installed tools\n$path_export_line" >> "$shell_config_file"
+            else
+                printf "PATH configuration already exists in $shell_config_file.\n"
+            fi
+        else
+            # Fallback warning if shell config is not found
+            printf "\033[33mCould not automatically update your shell config. Please manually add '$NVIM_INSTALL_DIR' to your PATH.\033[0m\n"
+        fi
+        # --- ELEGANT SOLUTION ENDS HERE ---
+
+    else
+        printf "\033[33mUnsupported OS: $(uname). Please install Neovim manually.\033[0m\n"
+    fi
+
+    # Verify installation - this will now succeed thanks to the immediate PATH export
+    if ! command -v nvim &> /dev/null; then
+        printf "\033[31mNeovim installation failed. The 'nvim' command is still not available.\033[0m\n"
+    fi
+
+    printf "\033[32mNeovim installed successfully: $(nvim --version | head -n 1) \033[0m\n"
+    return 0
+}
+
+function setup_lazyvim() {
+    printf "Setting up LazyVim...\n"
+
+    # --- Dependency Check ---
+    if ! command -v nvim &> /dev/null; then
+        printf "\033[31mNeovim is not installed. Please run the Neovim installer first.\033[0m\n"
+    fi
+    if ! command -v git &> /dev/null; then
+        printf "\033[31mGit is not installed. It is required to install LazyVim.\033[0m\n"
+    fi
+    printf "\033[32mDependencies met (Neovim and Git are installed).\033[0m\n"
+
+    # --- Backup and Install Logic ---
+    local NVIM_CONFIG_DIR="$HOME/.config/nvim"
+
+    # If the config dir exists, decide what to do
+    if [ -d "$NVIM_CONFIG_DIR" ]; then
+        # If it's already a LazyVim setup, we are done.
+        if [ -f "$NVIM_CONFIG_DIR/lazy-lock.json" ]; then
+            printf "LazyVim configuration already exists at $NVIM_CONFIG_DIR. No action needed.\n"
+            return 0
+        fi
+
+        # If it's some other config, back it up.
+        local backup_dir="${NVIM_CONFIG_DIR}.bak.$(date +%Y%m%d-%H%M%S)"
+        printf "\033[33mExisting Neovim configuration found at $NVIM_CONFIG_DIR.\033[0m\n"
+        printf "Backing it up to $backup_dir\n"
+        if ! mv "$NVIM_CONFIG_DIR" "$backup_dir"; then
+            printf "\033[31mFailed to back up existing Neovim configuration.\033[0m\n"
+        fi
+    fi
+
+    # Clone the LazyVim starter template
+    printf "Cloning the LazyVim starter template...\n"
+    if ! git clone https://github.com/LazyVim/starter "$NVIM_CONFIG_DIR"; then
+        printf "\033[31mFailed to clone LazyVim starter repository.\033[0m\n"
+    fi
+    # Remove the .git directory so the user can initialize their own git repo for their config
+    rm -rf "$NVIM_CONFIG_DIR/.git"
+    printf "LazyVim starter template installed successfully.\n"
+
+    # Optional but highly recommended: back up existing data/state directories
+    # to provide a completely fresh start for LazyVim.
+    for dir_to_backup in "$HOME/.local/share/nvim" "$HOME/.local/state/nvim" "$HOME/.cache/nvim"; do
+        if [ -d "$dir_to_backup" ]; then
+              local backup_data_dir="${dir_to_backup}.bak.$(date +%Y%m%d-%H%M%S)"
+              printf "Backing up existing Neovim data directory '$dir_to_backup' to '$backup_data_dir'\n"
+              mv "$dir_to_backup" "$backup_data_dir"
+        fi
+    done
+
+    echo ""
+    printf "\033[32mLazyVim Setup Complete.\033[0m\n"
+    printf "\033[32mNext time you run 'nvim', LazyVim will bootstrap and install all plugins.\033[0m\n"
+    return 0
+}
+
 if [[ "$(id -u)" == 0 ]]; then
   echo "$BASH_SOURCE: please run as non-root" >&2
   exit 1
@@ -464,35 +675,62 @@ fi
 
 umask g-w,o-w
 
-add_to_sudoers
 
-install_packages
-install_locale
-install_docker
-install_brew
-install_b2
-install_vscode
-install_ripgrep
-# install_jc
-install_bat
-install_gh
-# install_exa
-install_fx
-install_nuget
-install_bw
-install_websocat
-# install_fonts
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
 
-patch_ssh
-enable_sshd
-disable_motd_news
+    if [[ "$ID" =~ (debian|ubuntu) ]]; then
 
-fix_locale
-fix_clock
-fix_shm
-fix_dbus
-fix_imagemagic
+      add_to_sudoers
+      install_packages
+      install_locale
+      # install_docker
+      # install_brew
+      # install_b2
+      # install_vscode
+      # install_jc
+      # install_bw
+      # install_fonts
+      install_ripgrep
+      install_exa
+      install_bat
+      install_gh
+      install_fx
+      install_nuget
+      install_websocat
+      patch_ssh
+      # enable_sshd
+      disable_motd_news
+      fix_locale
+      # fix_clock
+      # fix_shm
+      # fix_dbus
+      # fix_imagemagic
+      fix_locale
+      setup_tmux
+      install_neovim
+      setup_lazyvim
+      # set_preferences
 
-set_preferences
+    elif [[ "$ID" =~ (rhel|fedora|centos|rocky|almalinux|openEuler) ]]; then
+
+      add_to_sudoers
+      install_packages_rpm
+      # install_locale
+      # fix_locale
+      # install_fonts
+      # install_ripgrep
+      install_exa
+      # install_bat
+      setup_tmux
+      install_neovim
+      setup_lazyvim
+
+    else
+        echo "Not support yet, ID: $ID, ID_LIKE: $ID_LIKE"
+    fi
+else
+    echo "File /etc/os-release not exists."
+fi
 
 echo SUCCESS

@@ -52,13 +52,25 @@ fi
 
 rm -rf ~/.cache
 
-sudo apt-get update
-sudo sh -c 'DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::options::="--force-confdef" -o DPkg::options::="--force-confold" upgrade -y'
-sudo apt-get autoremove -y
-sudo apt-get autoclean
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
 
-sudo apt-get install -y curl git zsh
-sudo chsh -s /bin/zsh "$USER"
+    if [[ "$ID" == "debian" || "$ID_LIKE" == "debian" ]]; then
+        sudo apt-get update
+        # sudo sh -c 'DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::options::="--force-confdef" -o DPkg::options::="--force-confold" upgrade -y'
+        sudo apt-get autoremove -y
+        sudo apt-get autoclean
+
+        sudo apt-get install -y curl git zsh tmux
+        sudo chsh -s /bin/zsh "$USER"
+    elif [[ "$ID" == "fedora" || "$ID_LIKE" == "fedora" || "$ID" == "centos" || "$ID" == "rhel" ]]; then
+        echo "Not support for Fedora/Red Hat"
+    else
+        echo "Not support yet, ID: $ID, ID_LIKE: $ID_LIKE"
+    fi
+else
+    echo "File /etc/os-release not exists."
+fi
 
 tmpdir="$(mktemp -d)"
 GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" \
