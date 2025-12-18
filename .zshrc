@@ -318,3 +318,6 @@ bindkey '^P' up-line-or-history
 
 alias tmux-min='\tmux source-file ~/.config/tmux/tmux.min.conf'
 alias tmux-fancy='\tmux source-file ~/.config/tmux/tmux.fancy.conf'
+
+# Added by Antigravity
+export PATH="/Users/x/.antigravity/antigravity/bin:$PATH"
