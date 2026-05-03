@@ -15,7 +15,6 @@ local _arith_eval=${(j: :)@}
   fi
   while true; do
     local match=() mbegin=() mend=()
-    # Fancy quote characters: https://www.compart.com/en/unicode/block/U+2000.
     _arith_eval=${_arith_eval//(#b)([0-9])[$_arith_eval_sep]([0-9][0-9][0-9])/$match[1]$match[2]}
     (( $#match )) || break
   done
