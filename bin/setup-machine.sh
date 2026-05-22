@@ -186,7 +186,6 @@ function install_docker() {
     sudo apt-get install -y docker.io
   fi
   sudo usermod -aG docker "$USER"
-  pip3 install --user docker-compose
 }
 
 function install_brew() {
