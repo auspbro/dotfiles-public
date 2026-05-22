@@ -283,12 +283,12 @@ function install_nuget() {
 }
 
 function install_bw() {
-  local v="1.22.1"
+  local v="2026.4.2"
   ! command -v bw &>/dev/null || [[ "$(bw --version)" != "$v" ]] || return 0
   local tmp
   tmp="$(mktemp -d)"
   pushd -- "$tmp"
-  curl -fsSLO "https://github.com/bitwarden/cli/releases/download/v${v}/bw-linux-${v}.zip"
+  curl -fsSLO "https://github.com/bitwarden/clients/releases/download/cli-v${v}/bw-linux-${v}.zip"
   unzip -- "bw-linux-${v}.zip"
   chmod +x bw
   mv bw ~/bin/
