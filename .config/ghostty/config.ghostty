@@ -13,8 +13,8 @@ adjust-cell-height = 2
 
 # --- Theme and Colors ---
 # Catppuccin with automatic light/dark switching
-theme = dark:Gruvbox Dark Hard,light:Gruvbox Light Hard
-# theme = dark:iTerm2 Solarized Dark,light:iTerm2 Solarized Light
+# theme = dark:Gruvbox Dark Hard,light:Gruvbox Light Hard
+ theme = dark:iTerm2 Solarized Dark,light:iTerm2 Solarized Light
 # theme = dark:Catppuccin Frappe,light:Catppuccin Latte
 
 
@@ -28,7 +28,7 @@ window-save-state = always
 window-theme = auto
 
 # --- Cursor ---
-cursor-style = bar
+cursor-style = block
 cursor-style-blink = true
 cursor-opacity = 0.8
 
