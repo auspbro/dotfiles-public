@@ -373,3 +373,7 @@ unset __mamba_setup
 
 # mimocode
 export PATH=/Users/x/.mimocode/bin:$PATH
+source ~/claude-infra-env/bin/activate
+
+# mimocode
+export PATH=/home/xuex1x/.mimocode/bin:$PATH
