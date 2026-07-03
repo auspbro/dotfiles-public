@@ -372,8 +372,7 @@ unset __mamba_setup
 # <<< mamba initialize <<<
 
 # mimocode
-export PATH=/Users/x/.mimocode/bin:$PATH
+export PATH=$HOME/.mimocode/bin:$PATH
 source ~/claude-infra-env/bin/activate
 
-# mimocode
-export PATH=/home/xuex1x/.mimocode/bin:$PATH
+alias cc='claude --dangerously-skip-permissions'
