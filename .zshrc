@@ -387,6 +387,6 @@ fi
 
 # mimocode
 export PATH=$HOME/.mimocode/bin:$PATH
-source ~/claude-infra-env/bin/activate
+[[ -f ~/claude-infra-env/bin/activate ]] && source ~/claude-infra-env/bin/activate
 
 alias cc='claude --dangerously-skip-permissions'
