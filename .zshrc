@@ -58,12 +58,30 @@ z4h install romkatv/archive romkatv/zsh-prompt-benchmark
 
 z4h init || return
 
+# ── Platform detection ──────────────────────────────────────
+case "$(uname -s)" in
+  Darwin)  PLATFORM=macos ;;
+  Linux)
+    if grep -qi microsoft /proc/version 2>/dev/null; then
+      PLATFORM=wsl
+    else
+      PLATFORM=linux
+    fi ;;
+  *)       PLATFORM=unknown ;;
+esac
+
 setopt glob_dots magic_equal_subst no_multi_os no_local_loops
 setopt rm_star_silent rc_quotes glob_star_short
 
 ulimit -c $(((4 << 30) / 512))  # 4GB
 
-path+=(~/.dotnet/tools(-/N) '/mnt/c/Program Files/Microsoft VS Code/bin'(-/N))
+# ── PATH（通用）────────────────────────────────────────────
+path+=(~/.local/bin ~/bin ~/.dotnet/tools(-/N))
+
+# ── PATH（平台特定）─────────────────────────────────────────
+if [[ $PLATFORM == wsl ]]; then
+  path+=('/mnt/c/Program Files/Microsoft VS Code/bin'(-/N))
+fi
 
 fpath=($Z4H/romkatv/archive $fpath)
 [[ -d ~/dotfiles/functions ]] && fpath=(~/dotfiles/functions $fpath)
@@ -81,10 +99,13 @@ export GPG_TTY=$TTY
 export PAGER=less
 export GOPATH=$HOME/go
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
-export HOMEBREW_NO_ANALYTICS=1
 export SYSTEMD_LESS=${LESS}S
-export HOMEBREW_NO_ENV_HINTS=1
 export MANOPT=--no-hyphenation
+
+if [[ $PLATFORM == macos ]]; then
+  export HOMEBREW_NO_ANALYTICS=1
+  export HOMEBREW_NO_ENV_HINTS=1
+fi
 
 if (( $+z4h_win_env )); then
   export NO_AT_BRIDGE=1
@@ -311,65 +332,58 @@ POSTEDIT=$'\n\n\e[2A'
 z4h source -c -- $ZDOTDIR/.zshrc-private
 z4h compile -- $ZDOTDIR/{.zshenv,.zprofile,.zshrc,.zlogin,.zlogout}
 
-export PATH="$HOME/.local/bin:$PATH"
-
 bindkey '^F' forward-word
 bindkey '^P' up-line-or-history
 
 alias tmux-min='\tmux source-file ~/.config/tmux/tmux.min.conf'
 alias tmux-fancy='\tmux source-file ~/.config/tmux/tmux.fancy.conf'
 
-# Added by Antigravity
-export PATH="/Users/x/.antigravity/antigravity/bin:$PATH"
+# ── macOS 专属配置 ─────────────────────────────────────────
+if [[ $PLATFORM == macos ]]; then
+  # Homebrew 镜像 (Aliyun)
+  export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.aliyun.com/homebrew/brew.git"
+  export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.aliyun.com/homebrew/homebrew-core.git"
+  export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.aliyun.com/homebrew/homebrew-bottles"
+  export HOMEBREW_API_DOMAIN="https://mirrors.aliyun.com/homebrew/homebrew-bottles/api"
+  export HOMEBREW_CASK_GIT_REMOTE="https://mirrors.aliyun.com/homebrew/homebrew-cask.git"
 
+  # Homebrew 环境（兼容 Apple Silicon 和 Intel）
+  if [[ -x /opt/homebrew/bin/brew ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [[ -x /usr/local/bin/brew ]]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
+
+  # Antigravity
+  export PATH="$HOME/.antigravity/antigravity/bin:$PATH"
+  export PATH="$HOME/.antigravity-ide/antigravity-ide/bin:$PATH"
+fi
+
+# ── NVM（通用，路径存在性检查）──────────────────────────────
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+[[ -s "$NVM_DIR/nvm.sh" ]] && \. "$NVM_DIR/nvm.sh"
+[[ -s "$NVM_DIR/bash_completion" ]] && \. "$NVM_DIR/bash_completion"
 
-# Homebrew 镜像配置 (Aliyun)
-export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.aliyun.com/homebrew/brew.git"
-export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.aliyun.com/homebrew/homebrew-core.git"
-export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.aliyun.com/homebrew/homebrew-bottles"
-export HOMEBREW_API_DOMAIN="https://mirrors.aliyun.com/homebrew/homebrew-bottles/api"
-export HOMEBREW_CASK_GIT_REMOTE="https://mirrors.aliyun.com/homebrew/homebrew-cask.git"
-
-# Homebrew 环境配置
-eval "$(/usr/local/bin/brew shellenv)"
-
-# Added by Antigravity
-export PATH="/Users/x/.antigravity/antigravity/bin:$PATH"
-
-# Added by Antigravity IDE
-export PATH="/Users/x/.antigravity-ide/antigravity-ide/bin:$PATH"
-
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/Users/x/miniforge3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
+# ── Conda/Mamba（路径存在性检查，跨平台通用）──────────────
+if [[ -d "$HOME/miniforge3" ]]; then
+  __conda_setup="$("$HOME/miniforge3/bin/conda" 'shell.zsh' 'hook' 2>/dev/null)"
+  if [[ $? -eq 0 ]]; then
     eval "$__conda_setup"
-else
-    if [ -f "/Users/x/miniforge3/etc/profile.d/conda.sh" ]; then
-        . "/Users/x/miniforge3/etc/profile.d/conda.sh"
-    else
-        export PATH="/Users/x/miniforge3/bin:$PATH"
-    fi
-fi
-unset __conda_setup
-# <<< conda initialize <<<
+  else
+    [[ -f "$HOME/miniforge3/etc/profile.d/conda.sh" ]] && . "$HOME/miniforge3/etc/profile.d/conda.sh"
+  fi
+  unset __conda_setup
 
-
-# >>> mamba initialize >>>
-# !! Contents within this block are managed by 'mamba shell init' !!
-export MAMBA_EXE='/Users/x/miniforge3/bin/mamba';
-export MAMBA_ROOT_PREFIX='/Users/x/miniforge3';
-__mamba_setup="$("$MAMBA_EXE" shell hook --shell zsh --root-prefix "$MAMBA_ROOT_PREFIX" 2> /dev/null)"
-if [ $? -eq 0 ]; then
+  export MAMBA_EXE="$HOME/miniforge3/bin/mamba"
+  export MAMBA_ROOT_PREFIX="$HOME/miniforge3"
+  __mamba_setup="$("$MAMBA_EXE" shell hook --shell zsh --root-prefix "$MAMBA_ROOT_PREFIX" 2>/dev/null)"
+  if [[ $? -eq 0 ]]; then
     eval "$__mamba_setup"
-else
-    alias mamba="$MAMBA_EXE"  # Fallback on help from mamba activate
+  else
+    alias mamba="$MAMBA_EXE"
+  fi
+  unset __mamba_setup
 fi
-unset __mamba_setup
-# <<< mamba initialize <<<
 
 # mimocode
 export PATH=$HOME/.mimocode/bin:$PATH
