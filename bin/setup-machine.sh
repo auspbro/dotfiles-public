@@ -4,6 +4,34 @@
 
 set -xueE -o pipefail
 
+# ── Platform detection ──────────────────────────────────────
+
+detect_platform() {
+  case "$(uname -s)" in
+    Darwin)
+      PLATFORM=macos
+      ;;
+    Linux)
+      if grep -qi microsoft /proc/version 2>/dev/null; then
+        PLATFORM=wsl
+      elif [ -f /etc/os-release ]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release
+        case "$ID" in
+          ubuntu|debian) PLATFORM=ubuntu ;;
+          rhel|fedora|centos|rocky|almalinux|openEuler) PLATFORM=rhel ;;
+          *)             PLATFORM=unsupported ;;
+        esac
+      else
+        PLATFORM=unsupported
+      fi
+      ;;
+    *)
+      PLATFORM=unsupported
+      ;;
+  esac
+}
+
 # These are obtained by running `dconf dump /org/gnome/gedit/preferences/`.
 readonly GEDIT_PREFERENCES="[editor]
 highlight-current-line=true
@@ -91,11 +119,9 @@ session-resize-terminal-right='disabled'
 win-reorder-previous-session='disabled'
 session-switch-to-terminal-left='disabled'"
 
-if [[ "$(</proc/version)" == *[Mm]icrosoft* ]] 2>/dev/null; then
-  readonly WSL=1
-else
-  readonly WSL=0
-fi
+# Detect platform (supports: macos, ubuntu, wsl, rhel)
+detect_platform
+readonly WSL=$(( PLATFORM == wsl ))
 
 # Install a bunch of debian packages.
 function install_packages() {
@@ -674,62 +700,57 @@ fi
 
 umask g-w,o-w
 
+echo "Setup starting for platform: $PLATFORM"
 
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
+case "$PLATFORM" in
+  macos)
+    ensure_homebrew
+    install_packages_macos
+    ;;
 
-    if [[ "$ID" =~ (debian|ubuntu) ]]; then
+  ubuntu)
+    add_to_sudoers
+    install_packages_debian
+    install_ripgrep
+    install_bat
+    install_gh
+    install_fx
+    install_websocat
+    disable_motd_news
+    fix_locale
+    ;;
 
-      add_to_sudoers
-      install_packages
-      install_locale
-      # install_docker
-      # install_brew
-      # install_b2
-      # install_vscode
-      # install_jc
-      # install_bw
-      # install_fonts
-      install_ripgrep
-      install_exa
-      install_bat
-      install_gh
-      install_fx
-      install_nuget
-      install_websocat
-      patch_ssh
-      # enable_sshd
-      disable_motd_news
-      fix_locale
-      # fix_clock
-      # fix_shm
-      # fix_dbus
-      # fix_imagemagic
-      fix_locale
-      setup_tmux
-      install_neovim
-      setup_lazyvim
-      # set_preferences
+  wsl)
+    add_to_sudoers
+    install_packages_debian
+    install_fonts
+    install_ripgrep
+    install_bat
+    install_gh
+    install_fx
+    install_nuget
+    install_websocat
+    patch_ssh
+    disable_motd_news
+    fix_locale
+    fix_dbus
+    ;;
 
-    elif [[ "$ID" =~ (rhel|fedora|centos|rocky|almalinux|openEuler) ]]; then
+  rhel)
+    add_to_sudoers
+    install_packages_rpm
+    install_exa
+    ;;
 
-      add_to_sudoers
-      install_packages_rpm
-      # install_locale
-      # fix_locale
-      # install_fonts
-      # install_ripgrep
-      install_exa
-      # install_bat
-      setup_tmux
-      install_neovim
-      setup_lazyvim
+  *)
+    echo "Unsupported platform: $PLATFORM" >&2
+    exit 1
+    ;;
+esac
 
-    else
-        echo "Not support yet, ID: $ID, ID_LIKE: $ID_LIKE"
-    fi
-else
-    echo "File /etc/os-release not exists."
-fi
+# Common post-install (all platforms)
+setup_tmux
+install_neovim
+install_lazyvim
 
-echo SUCCESS
+echo "SUCCESS: setup complete for $PLATFORM"
