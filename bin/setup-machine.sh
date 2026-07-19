@@ -121,7 +121,7 @@ session-switch-to-terminal-left='disabled'"
 
 # Detect platform (supports: macos, ubuntu, wsl, rhel)
 detect_platform
-readonly WSL=$(( PLATFORM == wsl ))
+[[ "$PLATFORM" == wsl ]] && readonly WSL=1 || readonly WSL=0
 
 # Install a bunch of debian packages.
 function install_packages() {
