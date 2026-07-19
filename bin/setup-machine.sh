@@ -317,14 +317,34 @@ function install_exa() {
   rm -rf -- "$tmp"
 }
 
+# ── apt + fallback helpers ──────────────────────────────────
+
+# Check if an apt package exists and its version >= $2.
+# Returns 0 if apt can satisfy the requirement, 1 otherwise.
+apt_version_gte() {
+  local pkg=$1 min_ver=$2
+  local avail
+  avail="$(apt-cache policy "$pkg" 2>/dev/null | grep -m1 'Candidate:' | awk '{print $2}')"
+  [[ -n "$avail" && "$avail" != "(none)" ]] || return 1
+  # Compare versions: return 0 if avail >= min_ver
+  printf '%s\n%s\n' "$min_ver" "$avail" | sort -V | head -1 | grep -qxF "$min_ver"
+}
+
 function install_ripgrep() {
+  ! command -v rg &>/dev/null || return 0
+
+  if apt_version_gte ripgrep 14.0; then
+    sudo apt-get install -y ripgrep
+    return
+  fi
+
+  # Fallback: download deb — update version periodically
   local v="14.1.1"
-  ! command -v rg &>/dev/null || [[ "$(rg --version)" != *" $v "* ]] || return 0
   local deb
   deb="$(mktemp)"
-  curl -fsSL "https://github.com/BurntSushi/ripgrep/releases/download/${v}/ripgrep_${v}-1_amd64.deb" >"$deb"
+  curl -fsSLo "$deb" "https://github.com/BurntSushi/ripgrep/releases/download/${v}/ripgrep_${v}-1_amd64.deb"
   sudo dpkg -i "$deb"
-  rm "$deb"
+  rm -- "$deb"
 }
 
 function install_jc() {
@@ -338,23 +358,56 @@ function install_jc() {
 }
 
 function install_bat() {
-  local v="0.18.0"
-  ! command -v bat &>/dev/null || [[ "$(bat --version)" != *" $v" ]] || return 0
+  ! command -v bat &>/dev/null || return 0
+
+  if apt_version_gte bat 0.24; then
+    sudo apt-get install -y bat
+    # Ubuntu's package is named 'bat' but binary is 'batcat'
+    if ! command -v bat &>/dev/null && command -v batcat &>/dev/null; then
+      sudo ln -sf "$(command -v batcat)" /usr/local/bin/bat
+    fi
+    return
+  fi
+
+  # Fallback: download deb — update version periodically
+  local v="0.25.0"
   local deb
   deb="$(mktemp)"
-  curl -fsSL "https://github.com/sharkdp/bat/releases/download/v${v}/bat_${v}_amd64.deb" > "$deb"
+  curl -fsSLo "$deb" "https://github.com/sharkdp/bat/releases/download/v${v}/bat_${v}_amd64.deb"
   sudo dpkg -i "$deb"
-  rm "$deb"
+  rm -- "$deb"
 }
 
 function install_gh() {
-  local v="2.12.1"
-  ! command -v gh &>/dev/null || [[ "$(gh --version)" != */v"$v" ]] || return 0
+  ! command -v gh &>/dev/null || return 0
+
+  if apt_version_gte gh 2.40; then
+    sudo apt-get install -y gh
+    return
+  fi
+
+  # Fallback: download deb — update version periodically
+  local v="2.67.0"
   local deb
   deb="$(mktemp)"
-  curl -fsSL "https://github.com/cli/cli/releases/download/v${v}/gh_${v}_linux_amd64.deb" > "$deb"
+  curl -fsSLo "$deb" "https://github.com/cli/cli/releases/download/v${v}/gh_${v}_linux_amd64.deb"
   sudo dpkg -i "$deb"
-  rm "$deb"
+  rm -- "$deb"
+}
+
+function install_fzf() {
+  ! command -v fzf &>/dev/null || return 0
+
+  if apt_version_gte fzf 0.38; then
+    sudo apt-get install -y fzf
+    return
+  fi
+
+  # Fallback: install via git
+  if [[ ! -d ~/.fzf ]]; then
+    git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+  fi
+  ~/.fzf/install --all --no-bash --no-fish
 }
 
 function install_fx() {
@@ -763,6 +816,7 @@ case "$PLATFORM" in
     install_ripgrep
     install_bat
     install_gh
+    install_fzf
     install_fx
     install_websocat
     disable_motd_news
@@ -776,6 +830,7 @@ case "$PLATFORM" in
     install_ripgrep
     install_bat
     install_gh
+    install_fzf
     install_fx
     install_nuget
     install_websocat
