@@ -210,9 +210,58 @@ function install_packages_rpm() {
   fi
 
   sudo yum install -y "${packages[@]}" 
-  sudo yum autoremove -y            
-  sudo yum clean all      
+  sudo yum autoremove -y
+  sudo yum clean all
 
+}
+
+# ── macOS: Homebrew ─────────────────────────────────────────
+
+ensure_homebrew() {
+  if command -v brew &>/dev/null; then
+    echo "Homebrew already installed."
+    return 0
+  fi
+
+  echo "Installing Homebrew..."
+  local install_script
+  install_script="$(mktemp)"
+  curl -fsSLo "$install_script" https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh
+  /bin/bash -- "$install_script" </dev/null
+  rm -- "$install_script"
+
+  # Add Homebrew to PATH for this script session
+  if [[ -x /opt/homebrew/bin/brew ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [[ -x /usr/local/bin/brew ]]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
+}
+
+install_packages_macos() {
+  echo "Installing packages via Homebrew..."
+
+  # Core CLI tools
+  local formulae=(
+    ripgrep
+    bat
+    eza
+    gh
+    fzf
+    neovim
+    tmux
+    tree
+    jq
+    curl
+    htop
+    git
+  )
+
+  brew install "${formulae[@]}"
+
+  # Nerd Font (MesloLGS NF)
+  brew install --cask font-meslo-lg-nerd-font 2>/dev/null || \
+    echo "Note: font cask may already be installed or requires manual install."
 }
 
 function install_b2() {
