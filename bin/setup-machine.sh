@@ -264,10 +264,6 @@ install_packages_macos() {
     echo "Note: font cask may already be installed or requires manual install."
 }
 
-function install_b2() {
-  sudo pip3 install --upgrade b2
-}
-
 function install_docker() {
   if (( WSL )); then
     local release
@@ -347,16 +343,6 @@ function install_ripgrep() {
   rm -- "$deb"
 }
 
-function install_jc() {
-  local v="1.14.4"
-  ! command -v jc &>/dev/null || [[ "$(jc -a | jq -r .version)" != "$v" ]] || return 0
-  local deb
-  deb="$(mktemp)"
-  curl -fsSL "https://jc-packages.s3-us-west-1.amazonaws.com/jc-${v}-1.x86_64.deb" >"$deb"
-  sudo dpkg -i "$deb"
-  rm "$deb"
-}
-
 function install_bat() {
   ! command -v bat &>/dev/null || return 0
 
@@ -429,20 +415,6 @@ function install_nuget() {
   curl -fsSLo "$tmp" "https://dist.nuget.org/win-x86-commandline/v${v}/nuget.exe"
   chmod +x -- "$tmp"
   mv -- "$tmp" ~/bin/nuget.exe
-}
-
-function install_bw() {
-  local v="2026.4.2"
-  ! command -v bw &>/dev/null || [[ "$(bw --version)" != "$v" ]] || return 0
-  local tmp
-  tmp="$(mktemp -d)"
-  pushd -- "$tmp"
-  curl -fsSLO "https://github.com/bitwarden/clients/releases/download/cli-v${v}/bw-linux-${v}.zip"
-  unzip -- "bw-linux-${v}.zip"
-  chmod +x bw
-  mv bw ~/bin/
-  popd
-  rm -rf -- "$tmp"
 }
 
 function install_websocat() {

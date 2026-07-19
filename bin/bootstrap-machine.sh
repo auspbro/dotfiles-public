@@ -1,4 +1,9 @@
 #!/bin/bash
+#
+# DEPRECATED: Use bin/install.sh instead.
+# This script is kept for backward compatibility only.
+# New deployments should use:
+#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/YOUR_USER/dotfiles-public/master/bin/install.sh)"
 
 set -xueEo pipefail
 
