@@ -340,8 +340,8 @@ alias tmux-fancy='\tmux source-file ~/.config/tmux/tmux.fancy.conf'
 
 # ── macOS 专属配置 ─────────────────────────────────────────
 if [[ $PLATFORM == macos ]]; then
-  # Homebrew 镜像 (Aliyun)
-  export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.aliyun.com/homebrew/brew.git"
+  # Homebrew 镜像 (Aliyun for bottles/API, GitHub for git)
+  export HOMEBREW_BREW_GIT_REMOTE="https://github.com/Homebrew/brew.git"
   export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.aliyun.com/homebrew/homebrew-core.git"
   export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.aliyun.com/homebrew/homebrew-bottles"
   export HOMEBREW_API_DOMAIN="https://mirrors.aliyun.com/homebrew/homebrew-bottles/api"

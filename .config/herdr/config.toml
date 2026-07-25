@@ -13,3 +13,10 @@ pane_gaps = false
 
 [keys]
 prefix = "`"
+
+# herdr-floax:keybind
+[[keys.command]]
+key = "prefix+f"
+type = "plugin_action"
+command = "herdr-floax.toggle"
+description = "Toggle floating pane"
