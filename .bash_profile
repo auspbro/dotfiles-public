@@ -10,4 +10,4 @@ fi
 PATH=$PATH:$HOME/bin
 
 export PATH
-. "$HOME/.cargo/env"
+[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
