@@ -58,6 +58,23 @@ z4h install romkatv/archive romkatv/zsh-prompt-benchmark
 
 z4h init || return
 
+# ── grep wrapper (must precede any grep call) ───────────────
+function grep_no_cr() {
+  emulate -L zsh -o pipe_fail
+  local -a tty base=(grep)
+  if [[ ${${:-grep}:c:A:t} != busybox* ]]; then
+    base+=(--exclude-dir={.bzr,CVS,.git,.hg,.svn})
+    tty+=(--color=auto --line-buffered)
+  fi
+  if [[ -t 1 ]]; then
+    $base $tty "$@" | tr -d "\r"
+  else
+    $base "$@"
+  fi
+}
+compdef grep_no_cr=grep
+alias grep=grep_no_cr
+
 # ── Platform detection ──────────────────────────────────────
 case "$(uname -s)" in
   Darwin)  PLATFORM=macos ;;
@@ -233,22 +250,6 @@ alias '$'=' '
 alias '%'=' '
 
 aliases[=]='noglob arith-eval'
-
-function grep_no_cr() {
-  emulate -L zsh -o pipe_fail
-  local -a tty base=(grep)
-  if [[ ${${:-grep}:c:A:t} != busybox* ]]; then
-    base+=(--exclude-dir={.bzr,CVS,.git,.hg,.svn})
-    tty+=(--color=auto --line-buffered)
-  fi
-  if [[ -t 1 ]]; then
-    $base $tty "$@" | tr -d "\r"
-  else
-    $base "$@"
-  fi
-}
-compdef grep_no_cr=grep
-alias grep=grep_no_cr
 
 (( $+commands[tree]  )) && alias tree='tree -a -I .git --dirsfirst'
 (( $+commands[gedit] )) && alias gedit='gedit &>/dev/null'
