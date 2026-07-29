@@ -1,145 +1,284 @@
-## Installation
+# dotfiles-public
 
-### Github Setup
+Personal shell environment, editor configs, and machine provisioning scripts.
 
-This needs to be done once per user.
+Forked from [romkatv/dotfiles-public](https://github.com/romkatv/dotfiles-public). The core bare-repo model and bootstrap flow are preserved; the tooling and configs have been extended for multi-platform use (macOS, WSL, Ubuntu/Debian).
 
-#### Set up dotfiles-public repo.
+## Architecture
 
-- Go to https://github.com/romkatv/dotfiles-public and click *Fork*.
-- Replace "romkatv" and "roman.perepelitsa@gmail.com" in `.gitconfig` of the newly created fork with your own data. You can do it thrugh the GitHub web UI.
+This is **not a normal project** — there's no build, lint, or test system. The repo files live at the repo root and map 1:1 to `$HOME` paths (e.g., `.zshrc` → `~/.zshrc`, `.config/ghostty/config.ghostty` → `~/.config/ghostty/config.ghostty`).
 
-#### Set up dotfiles-private repo.
+### Bare Repo Model
 
-- Go to https://github.com/new and create an empty `dotfiles-private` repo. Make it private.
+The repo is cloned as a **bare git repo** at `~/.dotfiles-public` with `GIT_WORK_TREE=~`. This means:
 
-#### Set up ssh keys.
+- No `.git/` directory in your home — all git metadata lives in `~/.dotfiles-public`.
+- `git status`, `git diff`, `git add`, `git commit` all work from any directory, operating on your home files.
+- A companion **private repo** (`~/.dotfiles-private`) holds secrets: SSH keys, private shell config, zsh history.
 
-- Generate a pair of ssh keys -- `rsa_id` and `rsa_id.pub` -- and add `rsa_id.pub` to github.com. See https://help.github.com/en/articles/connecting-to-github-with-ssh for details. Use a strong passphrase.
-- Backup `rsa_id` in a secure persistent storage system. For example, in your password manager.
+```text
+~/
+├── .dotfiles-public/    ← bare git repo (GIT_DIR)
+├── .dotfiles-private/   ← bare git repo (secrets)
+├── .zshrc               ← checked out from dotfiles-public
+├── .tmux.conf           ← checked out from dotfiles-public
+├── ...
+```
+
+### Public / Private Split
+
+Public config files (`.zshrc`, `.bashrc`, `.tmux.conf`, etc.) source or include their private counterparts:
+
+- `.zshrc` → sources `.zshrc-private`
+- `.zshenv` → sources `.zshenv-private`
+- `.ssh/config` → includes `config-private`
+
+Private files live in `~/.dotfiles-private` and are **never** committed to the public repo.
+
+## Quick Start
+
+### Prerequisites
+
+- SSH key pair (`~/.ssh/id_rsa` and `~/.ssh/id_rsa.pub`) with `id_rsa.pub` added to [GitHub SSH settings](https://github.com/settings/keys)
+- `git` and `curl` installed
+
+### One-Line Install
+
+Set your GitHub username and run:
 
 ```bash
-# 1.new generate SSH key
-ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
-# 2.start ssh-agent in background
-eval "$(ssh-agent -s)"
-# 3.add SSH key to ssh-agent
-ssh-add ~/.ssh/id_rsa
-# 4.add SSH public key to GitHub account
-https://docs.github.com/zh/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account
-```
-### Windows Setup
-
-#### Windows Preparation
-
-This needs to be done once per Windows installation. You don't need to repeat these steps when reinstalling Ubuntu.
-
-- Download these four ttf files:
-  - [MesloLGS NF Regular.ttf](
-      https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf)
-  - [MesloLGS NF Bold.ttf](
-      https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold.ttf)
-  - [MesloLGS NF Italic.ttf](
-      https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Italic.ttf)
-  - [MesloLGS NF Bold Italic.ttf](
-      https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold%20Italic.ttf)
-- Double-click on each file and click "Install". This will make `MesloLGS NF` font available to all
-   applications on your system.
-- Open *PowerShell* as *Administrator* and run:
-```powershell
-Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
-```
-- Reboot if prompted.
-- Install chocolatey from https://chocolatey.org/install.
-- Open *PowerShell* as *Administrator* and run:
-```powershell
-choco.exe install -y microsoft-windows-terminal vcxsrv
-## Or use winget in Windows 11 (24h2)
-winget install vcxsrv
-```
-- Run *Start > XLaunch*.
-  - Click *Next*.
-  - Click *Next*.
-  - Uncheck *Primary Selection*. Click *Next*.
-  - Click *Save Configuration* and save `config.xlaunch` in your `Startup` folder at `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`.
-  - Click *Finish*.
-
-Optional: if disk `D:` does not exist, make it an alias for `C:`. If you don't know why you might want this, then you don't need it.
-
-- Open *PowerShell* as *Administrator* and run:
-```powershell
-if (!(Test-Path -Path "D:\")) {
-  New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\DOS Devices" -Name "D:" -PropertyType String -Value \DosDevices\C:\ -Force
-}
-```
-- Reboot.
-
-#### WSL Removal
-
-Follow these steps to remove your Linux distro with all files (applications, settings, home directory, etc.). You can recreate it by following [WSL Installation](#wsl-installation) guide below.
-
-- Find out the name of your default distro by running the following command from *PowerShell*:
-```powershell
-wsl.exe --list
-```
-- Delete a distro:
-```powershell
-wsl.exe --terminate DISTRO
-wsl.exe --unregister DISTRO
+GITHUB_USERNAME=auspbro bash -c \
+  "$(curl -fsSL 'https://raw.githubusercontent.com/auspbro/dotfiles-public/master/bin/install.sh')"
 ```
 
-#### WSL Installation
+This single command will:
 
-These steps allow you to recreate the whole WSL environment. Before proceeding, delete the current distro if you have it. See [WSL Removal](#wsl-removal).
+1. Detect your platform (macOS / WSL / Ubuntu)
+2. Install base dependencies (`git`, `zsh`, `curl`)
+3. Clone both `dotfiles-public` and `dotfiles-private` as bare repos
+4. Check out all config files into `$HOME`
+5. Run `setup-machine.sh` to install additional software
 
-- Download `id_rsa` into the Windows `Downloads` folder. It's OK if it's downloaded as `id_rsa.txt`.
-- Run these commands from *PowerShell*:
-  ```powershell
-  wsl.exe --set-default-version 1
-  wsl.exe --install -d Ubuntu-22.04
-  ```
-- When prompted, create a new user. and check if github connect work
-```bash
-curl -I https://github.com
-curl -v https://github.com
+### Post-Install Configuration
+
+After install completes:
+
+1. **Restart your shell** — close and reopen terminal, or `exec zsh`
+2. **Powerlevel10k configuration** — the p10k wizard should launch automatically on first zsh start. If not, run `p10k configure`.
+3. **zsh4humans update** — run `z4h update` to ensure the latest z4h framework.
+
+## What's Included
+
+### Shell
+
+| Component | Config File(s) | Notes |
+|-----------|---------------|-------|
+| **Zsh** (primary) | `.zshrc`, `.zshenv` | Via [zsh4humans](https://github.com/romkatv/zsh4humans) (z4h) |
+| **Powerlevel10k** | `.p10k.zsh`, `.p10k-ascii.zsh`, `.p10k-8color.zsh`, `.p10k-ascii-8color.zsh` | Multiple prompt profiles for different terminal capabilities |
+| **Bash** (fallback) | `.bashrc`, `.bash_profile`, `.bash_aliases` | Minimal bash environment |
+| **Zsh functions** | `dotfiles/functions/` | Autoloaded: `sync-dotfiles`, `toggle-dotfiles`, `bench`, `arith-eval`, `zman` |
+
+### Terminal Emulators
+
+| Emulator | Config File | Notes |
+|----------|------------|-------|
+| **Ghostty** | `.config/ghostty/config.ghostty` | Maple Mono NF CN font, Solarized theme, transparent background, quick-terminal (`Ctrl+backtick`) |
+| **Windows Terminal** | `dotfiles/microsoft-terminal-settings*.json` | Multiple machine-specific profiles (Legion, Surface 4, XPS 13) |
+| **Apple Terminal** | `dotfiles/apple-terminal-profile.terminal` | macOS Terminal profile |
+
+### tmux
+
+Main config: `.tmux.conf`
+
+| Feature | Binding |
+|---------|---------|
+| Pane navigation | `h/j/k/l` (vim-style) |
+| Fast pane nav | `Ctrl+Alt+h/j/k/l` |
+| Split horizontal | `\|` |
+| Split vertical | `-` |
+| Second prefix | `` ` `` (backtick) |
+| Floating terminal | `Alt+backtick` (80% width, 70% height) |
+| Plugin manager | [TPM](https://github.com/tmux-plugins/tpm) |
+
+Alternative profiles switchable via aliases:
+
+```zsh
+tmux-min    # minimal config → .config/tmux/tmux.min.conf
+tmux-fancy  # fancy config  → .config/tmux/tmux.fancy.conf
 ```
-- check if ssh connect work `ssh -T git@github.com`, if not, add this to your ~/.ssh/config
+
+### Editors
+
+| Editor | Config File | Notes |
+|--------|------------|-------|
+| **Vim** | `.vimrc` | Leader=Space, `jk`/`vv` for Esc, 4-space indent, system clipboard, relative line numbers |
+| **VS Code** | `.config/Code/User/settings.json` | VS Code settings |
+| **Neovim (VSCode extension)** | `.config/nvim/init_vscode.vim` | For VSCode Neovim plugin |
+| **Clang-format** | `.clang-format` | Google style, 100-column limit, left pointer alignment |
+
+### Docker Development Environment
+
+`bin/build_docker_env.sh` builds a Docker image (`alanenv`) based on Ubuntu 22.04 with common development tools pre-installed.
 
 ```bash
+bash ~/bin/build_docker_env.sh          # build
+bash ~/bin/build_docker_env.sh rebuild   # rebuild without cache
+```
+
+### Utility Scripts (`bin/`)
+
+| Script | Purpose |
+|--------|---------|
+| `install.sh` | Unified bootstrap entry point (platform-aware) |
+| `setup-machine.sh` | Install all software (apt packages, tools, fonts, Docker). Idempotent, safe to re-run. |
+| `bootstrap-dotfiles.sh` | Clone both dotfiles repos as bare repos |
+| `bootstrap-machine.sh` | Legacy entry point (deprecated, use `install.sh`) |
+| `build_docker_env.sh` | Build `alanenv` Docker development image |
+| `num-cpus` | Return CPU count (used by `make`/`cmake` aliases for `-j`) |
+| `cpu-temp` | Show CPU temperature |
+| `diff-so-fancy` | Git diff beautifier |
+| `redit` | Open file in editor from remote session |
+| `rdp` | Remote desktop helper |
+| `slurp` / `barf` | Clipboard utilities |
+| `punzip` | Parallel unzip |
+| `pick-random-lines` | Random line picker from file |
+
+## File Structure
+
+```text
+.
+├── .bash_aliases              # Bash aliases
+├── .bash_profile              # Bash profile
+├── .bashrc                    # Bash config (fallback shell)
+├── .clang-format              # C/C++ formatting rules
+├── .config/
+│   ├── Code/User/             # VS Code settings
+│   ├── ghostty/               # Ghostty terminal config
+│   ├── git/                   # Git global ignores
+│   ├── nvim/                  # Neovim (VSCode extension) config
+│   └── tmux/                  # Alternative tmux profiles
+├── .hushlogin                 # Suppress login message
+├── .p10k.zsh                  # Powerlevel10k config (default)
+├── .p10k-ascii.zsh            # Powerlevel10k config (ASCII-only)
+├── .p10k-8color.zsh           # Powerlevel10k config (8-color terminal)
+├── .p10k-ascii-8color.zsh     # Powerlevel10k config (ASCII + 8-color)
+├── .purepower                 # Pure Power theme config
+├── .ssh/                      # SSH config (public part)
+├── .tmux.conf                 # tmux main config
+├── .vimrc                     # Vim config
+├── .zshenv                    # Zsh environment (sourced first)
+├── .zshrc                     # Zsh config (main)
+├── CLAUDE.md                  # Claude Code project context
+├── README.md                  # This file
+├── bin/                       # Utility scripts
+└── dotfiles/
+    ├── apple-terminal-profile.terminal
+    ├── functions/             # Autoloaded zsh functions
+    └── microsoft-terminal-settings*.json  # Per-machine Windows Terminal configs
+```
+
+## Daily Usage
+
+### Sync Dotfiles
+
+Pull, merge upstream changes, and push both repos:
+
+```zsh
+sync-dotfiles
+```
+
+This function (in `dotfiles/functions/sync-dotfiles`) also commits zsh history from the private repo before syncing.
+
+### Toggle Between Dotfiles Repos
+
+Bound to `Alt+P`, cycles `GIT_DIR`/`GIT_WORK_TREE` between three states:
+
+```zsh
+toggle-dotfiles          # back to normal (unset)
+toggle-dotfiles public   # switch to public dotfiles repo
+toggle-dotfiles private  # switch to private dotfiles repo
+```
+
+This lets you run `git add/commit/diff` on dotfiles from any directory.
+
+### Full Maintenance
+
+Run periodically to keep everything up to date:
+
+```zsh
+sync-dotfiles && bash ~/bin/setup-machine.sh && z4h update
+```
+
+Pro tip: Copy-paste this command including the comment. Use `Ctrl+R` and type `#maintenance` to find it later.
+
+```zsh
+sync-dotfiles && bash ~/bin/setup-machine.sh && z4h update #maintenance
+```
+
+## Machine-Specific Setup
+
+### Platform Support Matrix
+
+| Platform | `install.sh` | `setup-machine.sh` | Notes |
+|----------|:---:|:---:|-------|
+| **macOS** | ✅ | ✅ | Uses Homebrew; Xcode CLT installed automatically |
+| **WSL (Ubuntu)** | ✅ | ✅ | Primary development platform |
+| **Ubuntu/Debian** | ✅ | ✅ | Native Linux |
+| **RHEL/Fedora/CentOS** | ❌ | ✅ | Partial support in setup script |
+
+### Windows / WSL Setup
+
+All Windows setup is handled by `install.sh`. Manual steps:
+
+1. Install WSL 2 with Ubuntu 22.04:
+   ```powershell
+   wsl.exe --set-default-version 1
+   wsl.exe --install -d Ubuntu-22.04
+   ```
+2. Download your SSH private key (`id_rsa`) into the Windows `Downloads` folder.
+3. Run the one-line install command from [Quick Start](#quick-start).
+
+#### Windows Terminal Configuration
+
+After install, configure Windows Terminal:
+
+1. Open Windows Terminal → `Ctrl+,` → change *Profiles > Ubuntu > Appearance > Text Formatting > Intense text style* to **"Bold font"**
+2. `Ctrl+Shift+,` → replace `settings.json` with the appropriate file from `dotfiles/microsoft-terminal-settings*.json`.
+
+#### SSH Connectivity
+
+If `ssh -T git@github.com` fails, add this to `~/.ssh/config`:
+
+```text
 Host github.com
   Hostname ssh.github.com
   Port 443
   User git
   IdentityFile ~/.ssh/id_rsa
 ```
-- Type this (change the value of `GITHUB_USERNAME` if it's not the same as your WSL username):
-```bash
-GITHUB_USERNAME=$USER bash -c \
-  "$(curl -fsSL 'https://raw.githubusercontent.com/auspbro/dotfiles-public/master/bin/bootstrap-machine.sh')"
-```
-- Say `Yes` when prompted to terminate WSL.
-- Run *Start > Windows Terminal*.
-  - Press <kbd>Ctrl+,</kbd>
-  - Change *Profiles > Ubuntu-22.04 > Appearance > Text Formatting > Intense text style* to *"Bold font"*
-- Run *Start > Windows Terminal*.
-  - Press <kbd>Ctrl+Shift+,</kbd>.
-  - Replace the content of `settings.json` with [this](https://raw.githubusercontent.com/romkatv/dotfiles-public/master/dotfiles/microsoft-terminal-settings.json). Change "romkatv" to your WSL username.
 
 #### Optional: Windows Defender Exclusion
 
-- Run *Start > Windows Security*.
-  - Click *Virus & threat protection*.
-  - Click *Manage settings* under *Virus & threat protection settings*.
-  - Click *Add or remove exclusions* under *Exclusions*.
-  - Click *Add an exclusion > Folder*.
-  - Select `%USERPROFILE%\AppData\Local\Packages\CanonicalGroupLimited.Ubuntu22.04LTS_79rhkp1fndgsc`.
+For better WSL filesystem performance, exclude the WSL distro folder from Windows Defender scanning:
 
-### Maintenance
+1. *Windows Security* → *Virus & threat protection* → *Manage settings*
+2. *Exclusions* → *Add an exclusion > Folder*
+3. Select `%USERPROFILE%\AppData\Local\Packages\CanonicalGroupLimited.Ubuntu22.04LTS_79rhkp1fndgsc`
 
-Run this command occasionally.
+### WSL Removal
 
-```zsh
-sync-dotfiles && bash ~/bin/setup-machine.sh && z4h update #maintenance
+To completely remove and recreate your WSL distro:
+
+```powershell
+wsl.exe --list                    # find distro name
+wsl.exe --terminate DISTRO        # stop it
+wsl.exe --unregister DISTRO       # delete it
 ```
 
-Pro tip: Copy-paste this whole command including the comment. Next time when you decide to run maintenance tasks, press `Ctrl+R` and type `#maintenance`. This is how you can "tag" commands and easily find them later. You can apply more than one "tag". Technically, everything after `#` is a comment.
+Then follow the [Windows / WSL Setup](#windows--wsl-setup) steps above to recreate.
+
+## Acknowledgments
+
+- [romkatv/dotfiles-public](https://github.com/romkatv/dotfiles-public) — the foundation this repo is built on
+- [zsh4humans](https://github.com/romkatv/zsh4humans) — the zsh framework
+- [Powerlevel10k](https://github.com/romkatv/powerlevel10k) — the prompt theme
