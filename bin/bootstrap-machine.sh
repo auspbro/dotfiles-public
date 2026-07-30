@@ -79,7 +79,7 @@ fi
 
 tmpdir="$(mktemp -d)"
 GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" \
-  git clone --depth=1 -- git@github.com:"$GITHUB_USERNAME"/dotfiles-public.git "$tmpdir"
+  git clone --depth=1 -- https://github.com/"$GITHUB_USERNAME"/dotfiles-public.git "$tmpdir"
 bootstrap="$(<"$tmpdir"/bin/bootstrap-dotfiles.sh)"
 rm -rf -- "$tmpdir"
 bash -c "$bootstrap"

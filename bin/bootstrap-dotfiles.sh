@@ -12,8 +12,15 @@ fi
 
 function clone_repo() {
   local repo=$1
+  local protocol="${2:-ssh}"  # ssh (default) or https
   local git_dir="$HOME/.$repo"
-  local uri="git@github.com:$GITHUB_USERNAME/$repo.git"
+
+  local uri
+  if [[ "$protocol" == "https" ]]; then
+    uri="https://github.com/$GITHUB_USERNAME/$repo.git"
+  else
+    uri="git@github.com:$GITHUB_USERNAME/$repo.git"
+  fi
 
   if [[ -e "$git_dir" ]]; then
     return 0
@@ -35,8 +42,8 @@ if [[ "$(id -u)" == 0 ]]; then
   exit 1
 fi
 
-clone_repo dotfiles-public
-clone_repo dotfiles-private
+clone_repo dotfiles-public https
+clone_repo dotfiles-private ssh
 
 if [[ "$GITHUB_USERNAME" != romkatv ]]; then
   git --git-dir="$HOME"/.dotfiles-public \

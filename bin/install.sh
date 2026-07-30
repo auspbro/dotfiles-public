@@ -147,8 +147,15 @@ _apply_proxy() {
 
 clone_repo() {
   local repo=$1
+  local protocol="${2:-ssh}"  # ssh (default) or https
   local git_dir="$HOME/.$repo"
-  local uri="git@github.com:$GITHUB_USERNAME/$repo.git"
+
+  local uri
+  if [[ "$protocol" == "https" ]]; then
+    uri="https://github.com/$GITHUB_USERNAME/$repo.git"
+  else
+    uri="git@github.com:$GITHUB_USERNAME/$repo.git"
+  fi
 
   if [[ -e "$git_dir" ]]; then
     echo "Repository $repo already exists at $git_dir, skipping clone."
@@ -165,6 +172,36 @@ clone_repo() {
   git --git-dir="$git_dir" branch -u origin/master
   git --git-dir="$git_dir" checkout -- .
   git --git-dir="$git_dir" submodule update --init --recursive
+}
+
+# ── SSH connectivity and remote URL switching ──────────────
+
+# Verify that SSH key can authenticate with GitHub.
+# Returns 0 on success, 1 on failure.
+verify_ssh_github() {
+  echo "Verifying SSH connection to GitHub..."
+  if ssh -T git@github.com -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new 2>&1 | grep -q "successfully authenticated"; then
+    echo "SSH connection to GitHub OK."
+    return 0
+  else
+    echo "WARNING: SSH connection to GitHub failed." >&2
+    echo "dotfiles-public origin will remain HTTPS. You can switch manually later:" >&2
+    echo "  git --git-dir=~/.dotfiles-public remote set-url origin git@github.com:$GITHUB_USERNAME/dotfiles-public.git" >&2
+    return 1
+  fi
+}
+
+# Switch a repo's origin remote from HTTPS to SSH after verifying connectivity.
+switch_repo_to_ssh() {
+  local repo=$1
+  local git_dir="$HOME/.$repo"
+  local ssh_uri="git@github.com:$GITHUB_USERNAME/$repo.git"
+
+  if verify_ssh_github; then
+    echo "Switching $repo origin to SSH..."
+    git --git-dir="$git_dir" remote set-url origin "$ssh_uri"
+    echo "$repo origin switched to SSH: $ssh_uri"
+  fi
 }
 
 # ── SSH key setup ───────────────────────────────────────────
@@ -211,6 +248,12 @@ resolve_ssh_key_file() {
 
 # Generate an Ed25519 key pair and register the public key with GitHub.
 setup_ssh_keys() {
+  if [[ "${SKIP_SSH_SETUP:-}" == "1" ]]; then
+    echo "Skipping SSH key setup (SKIP_SSH_SETUP=1)."
+    echo "Note: SSH keys are required for dotfiles-private and git push."
+    return 0
+  fi
+
   mkdir -p -m 700 ~/.ssh ~/.ssh/s
 
   # ── Step 1: Check for existing key ──
@@ -323,12 +366,17 @@ main() {
     ubuntu|wsl) install_base_deps_linux ;;
   esac
 
+  # Clone public repo via HTTPS (no auth required)
+  clone_repo dotfiles-public https
+
   # SSH key setup (all platforms)
   setup_ssh_keys
 
-  # Clone bare repos
-  clone_repo dotfiles-public
-  clone_repo dotfiles-private
+  # Switch public repo origin to SSH (if SSH is working)
+  switch_repo_to_ssh dotfiles-public
+
+  # Clone private repo via SSH (requires auth)
+  clone_repo dotfiles-private ssh
 
   # Add upstream remote for dotfiles-public (if not the original author)
   if [[ "$GITHUB_USERNAME" != romkatv ]]; then
