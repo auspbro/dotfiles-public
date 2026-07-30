@@ -330,6 +330,10 @@ fi
 
 POSTEDIT=$'\n\n\e[2A'
 
+# Auto-detect proxy (cached, ~100ms after first run)
+# Place before .zshrc-private so private config can override if needed
+auto-proxy
+
 z4h source -c -- $ZDOTDIR/.zshrc-private
 z4h compile -- $ZDOTDIR/{.zshenv,.zprofile,.zshrc,.zlogin,.zlogout}
 
