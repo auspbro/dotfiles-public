@@ -46,7 +46,7 @@ fi
 }
 
 if [[ $TERM == xterm-256color && ! -v ZSH_SCRIPT && ! -v ZSH_EXECUTION_STRING &&
-      -z $SSH_CONNECTON && P9K_SSH -ne 1 && -e ~/.ssh/id_rsa && -e /proc/uptime &&
+      -z $SSH_CONNECTION && P9K_SSH -ne 1 && -e ~/.ssh/id_rsa && -e /proc/uptime &&
       ! (/tmp/wiped-after-boot -nt /proc/uptime) && -r /proc/version &&
       "$(</proc/version)" == *Microsoft* ]]; then
   print -Pr -- "%F{3}zsh%f: wiping %U/tmp%u ..."
@@ -127,7 +127,7 @@ fi
 if (( $+z4h_win_env )); then
   export NO_AT_BRIDGE=1
   export LIBGL_ALWAYS_INDIRECT=1
-  [[ -z $SSH_CONNECTON && $P9K_SSH != 1 && -z $DISPLAY ]] && export DISPLAY=localhost:0.0
+  [[ -z $SSH_CONNECTION && $P9K_SSH != 1 && -z $DISPLAY ]] && export DISPLAY=localhost:0.0
   (( $+z4h_win_home )) && hash -d w=$z4h_win_home
 fi
 
@@ -334,10 +334,6 @@ POSTEDIT=$'\n\n\e[2A'
 # Place before .zshrc-private so private config can override if needed
 auto-proxy
 
-# Git identity (same across all machines)
-git config --global user.name "auspbro" 2>/dev/null
-git config --global user.email "0x2fxx@gmail.com" 2>/dev/null
-
 z4h source -c -- $ZDOTDIR/.zshrc-private
 z4h compile -- $ZDOTDIR/{.zshenv,.zprofile,.zshrc,.zlogin,.zlogout}
 
@@ -368,30 +364,45 @@ if [[ $PLATFORM == macos ]]; then
   export PATH="$HOME/.antigravity-ide/antigravity-ide/bin:$PATH"
 fi
 
-# ── NVM（通用，路径存在性检查）──────────────────────────────
+# ── NVM（lazy-load，首次调用 nvm/node/npm 时才加载）────────
 export NVM_DIR="$HOME/.nvm"
-[[ -s "$NVM_DIR/nvm.sh" ]] && \. "$NVM_DIR/nvm.sh"
-[[ -s "$NVM_DIR/bash_completion" ]] && \. "$NVM_DIR/bash_completion"
+if [[ -s "$NVM_DIR/nvm.sh" ]]; then
+  __lazy_load_nvm() {
+    unset -f nvm node npm npx yarn pnpm 2>/dev/null
+    \. "$NVM_DIR/nvm.sh"
+    [[ -s "$NVM_DIR/bash_completion" ]] && \. "$NVM_DIR/bash_completion"
+  }
+  nvm() { __lazy_load_nvm && nvm "$@"; }
+  node() { __lazy_load_nvm && node "$@"; }
+  npm() { __lazy_load_nvm && npm "$@"; }
+  npx() { __lazy_load_nvm && npx "$@"; }
+  yarn() { __lazy_load_nvm && yarn "$@"; }
+  pnpm() { __lazy_load_nvm && pnpm "$@"; }
+fi
 
-# ── Conda/Mamba（路径存在性检查，跨平台通用）──────────────
+# ── Conda/Mamba（lazy-load，首次调用 conda/mamba 时才加载）─
 if [[ -d "$HOME/miniforge3" ]]; then
-  __conda_setup="$("$HOME/miniforge3/bin/conda" 'shell.zsh' 'hook' 2>/dev/null)"
-  if [[ $? -eq 0 ]]; then
-    eval "$__conda_setup"
-  else
-    [[ -f "$HOME/miniforge3/etc/profile.d/conda.sh" ]] && . "$HOME/miniforge3/etc/profile.d/conda.sh"
-  fi
-  unset __conda_setup
-
   export MAMBA_EXE="$HOME/miniforge3/bin/mamba"
   export MAMBA_ROOT_PREFIX="$HOME/miniforge3"
-  __mamba_setup="$("$MAMBA_EXE" shell hook --shell zsh --root-prefix "$MAMBA_ROOT_PREFIX" 2>/dev/null)"
-  if [[ $? -eq 0 ]]; then
-    eval "$__mamba_setup"
-  else
-    alias mamba="$MAMBA_EXE"
-  fi
-  unset __mamba_setup
+  __lazy_load_conda() {
+    unset -f conda mamba 2>/dev/null
+    __conda_setup="$("$HOME/miniforge3/bin/conda" 'shell.zsh' 'hook' 2>/dev/null)"
+    if [[ $? -eq 0 ]]; then
+      eval "$__conda_setup"
+    else
+      [[ -f "$HOME/miniforge3/etc/profile.d/conda.sh" ]] && . "$HOME/miniforge3/etc/profile.d/conda.sh"
+    fi
+    unset __conda_setup
+    __mamba_setup="$("$MAMBA_EXE" shell hook --shell zsh --root-prefix "$MAMBA_ROOT_PREFIX" 2>/dev/null)"
+    if [[ $? -eq 0 ]]; then
+      eval "$__mamba_setup"
+    else
+      alias mamba="$MAMBA_EXE"
+    fi
+    unset __mamba_setup
+  }
+  conda() { __lazy_load_conda && conda "$@"; }
+  mamba() { __lazy_load_conda && mamba "$@"; }
 fi
 
 # mimocode

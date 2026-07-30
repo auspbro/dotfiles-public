@@ -1,6 +1,11 @@
 #!/bin/bash -i
 LOCATION="${LOCATION:=$(pwd)}"
-HTTP_PROXY="ip_addr:port"
+
+# Use proxy from environment if set, otherwise no proxy
+DOCKER_PROXY_ARGS=""
+if [[ -n "${http_proxy:-}" ]]; then
+  DOCKER_PROXY_ARGS="--build-arg http_proxy=$http_proxy --build-arg https_proxy=$http_proxy"
+fi
 
 ACTIVE_CONTAINER_ID=$(docker ps -aqf "name=alanenv")
 NOCACHE=""
@@ -9,18 +14,11 @@ if [ "$1" == "rebuild" ] ; then
     NOCACHE="--no-cache"
 fi
 
-# DOCKER_BUILDKIT=0 docker build --build-arg http_proxy=$HTTP_PROXY $NOCACHE --platform linux/amd64 -t alanenv - <<EOF
-DOCKER_BUILDKIT=0 docker build $NOCACHE --platform linux/amd64 -t alanenv - <<EOF
+DOCKER_BUILDKIT=0 docker build $DOCKER_PROXY_ARGS $NOCACHE --platform linux/amd64 -t alanenv - <<EOF
 FROM ubuntu:22.04
 ARG DEBIAN_FRONTEND=noninteractive
-ENV http_proxy=$HTTP_PROXY 
-ENV https_proxy=$HTTP_PROXY
-
-# Configure apt-get proxy
-RUN if [ -n "${http_proxy}" ] ; then \
-     echo "Acquire::http::Proxy ${http_proxy}"; >> /etc/apt/apt.conf && \
-     echo "Acquire::https::Proxy ${http_proxy}"; >> /etc/apt/apt.conf ; \
-    fi
+ARG http_proxy
+ARG https_proxy
 
 
 # 更换阿里云源
@@ -106,10 +104,10 @@ RUN git clone https://github.com/robbyrussell/oh-my-zsh.git ~/.oh-my-zsh && \
 
 RUN echo '' >> ~/.zshrc \
     && echo 'export NVM_DIR="/root/.nvm"' >> ~/.zshrc \
-    && echo '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm' >> ~/.zshrc
-    && echo "bindkey ',' autosuggest-accept" >>/.zshrc
-    && echo "bindkey '^P' history-substring-search-up" >>/.zshrc
-    && echo "bindkey '^N' history-substring-search-down" >>/.zshrc
+    && echo '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm' >> ~/.zshrc \
+    && echo "bindkey ',' autosuggest-accept" >> ~/.zshrc \
+    && echo "bindkey '^P' history-substring-search-up" >> ~/.zshrc \
+    && echo "bindkey '^N' history-substring-search-down" >> ~/.zshrc
 
 
 # Install neovim

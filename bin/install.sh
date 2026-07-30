@@ -273,7 +273,7 @@ setup_ssh_keys() {
 
   # ── Step 5: Register key if not already present ──
   local pub_key_fingerprint
-  pub_key_fingerprint="$(awk '{print $2}' "${key_file}.pub")"
+  pub_key_fingerprint="$(ssh-keygen -lf "${key_file}.pub" | awk '{print $2}')"
 
   if gh ssh-key list | grep -qF "$pub_key_fingerprint"; then
     echo "SSH key already registered with GitHub."

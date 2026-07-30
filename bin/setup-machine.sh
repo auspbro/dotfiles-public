@@ -496,7 +496,7 @@ function add_to_sudoers() {
    elif [[ "$ID" =~ (rhel|fedora|centos|rocky|almalinux|openEuler) ]]; then
      sudo usermod -aG wheel "$USER"
    else
-     eco "Not support yet, ID: $ID, ID_LIKE: $ID_LIKE"
+     echo "Not supported yet, ID: $ID, ID_LIKE: $ID_LIKE" >&2
    fi
      
    sudo tee /etc/sudoers.d/"$USER" <<<"$USER ALL=(ALL) NOPASSWD:ALL" >/dev/null
@@ -835,5 +835,13 @@ esac
 setup_tmux
 install_neovim
 setup_lazyvim
+
+# Set default git identity (only if not already configured)
+if [[ -z "$(git config --global user.name 2>/dev/null)" ]]; then
+  git config --global user.name "auspbro"
+fi
+if [[ -z "$(git config --global user.email 2>/dev/null)" ]]; then
+  git config --global user.email "0x2fxx@gmail.com"
+fi
 
 echo "SUCCESS: setup complete for $PLATFORM"
