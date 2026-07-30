@@ -12,16 +12,17 @@ detect_platform() {
       PLATFORM=macos
       ;;
     Linux)
-      if grep -qi microsoft /proc/version 2>/dev/null; then
-        PLATFORM=wsl
-      elif [ -f /etc/os-release ]; then
+      # Always source os-release on Linux to populate ID, ID_LIKE, etc.
+      if [ -f /etc/os-release ]; then
         # shellcheck disable=SC1091
         . /etc/os-release
-        case "$ID" in
-          ubuntu|debian) PLATFORM=ubuntu ;;
-          rhel|fedora|centos|rocky|almalinux|openEuler) PLATFORM=rhel ;;
-          *)             PLATFORM=unsupported ;;
-        esac
+      fi
+      if grep -qi microsoft /proc/version 2>/dev/null; then
+        PLATFORM=wsl
+      elif [[ "${ID:-}" =~ (ubuntu|debian) ]]; then
+        PLATFORM=ubuntu
+      elif [[ "${ID:-}" =~ (rhel|fedora|centos|rocky|almalinux|openEuler) ]]; then
+        PLATFORM=rhel
       else
         PLATFORM=unsupported
       fi
