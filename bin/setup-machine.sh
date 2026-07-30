@@ -432,6 +432,11 @@ function install_websocat() {
 
 function fix_locale() {
   sudo tee /etc/default/locale >/dev/null <<<'LC_ALL="C.UTF-8"'
+  # Generate en_US.UTF-8 if not already available (WSL often lacks it)
+  if ! locale -a 2>/dev/null | grep -qi 'en_US\.utf-\?8'; then
+    sudo locale-gen en_US.UTF-8
+  fi
+  sudo update-locale LANG=en_US.UTF-8 LC_ALL=C.UTF-8
 }
 
 # Avoid clock snafu when dual-booting Windows and Linux.
