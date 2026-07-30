@@ -807,8 +807,6 @@ case "$PLATFORM" in
     install_gh
     install_fzf
     install_fx
-    install_nuget
-    install_websocat
     patch_ssh
     disable_motd_news
     fix_locale
