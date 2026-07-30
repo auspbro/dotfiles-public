@@ -39,8 +39,11 @@ Private files live in `~/.dotfiles-private` and are **never** committed to the p
 
 ### Prerequisites
 
-- SSH key pair (`~/.ssh/id_rsa` and `~/.ssh/id_rsa.pub`) with `id_rsa.pub` added to [GitHub SSH settings](https://github.com/settings/keys)
+- A GitHub account
 - `git` and `curl` installed
+
+> SSH key generation (Ed25519) and GitHub registration are handled automatically by `install.sh`.
+> If you already have an SSH key (`~/.ssh/id_ed25519` or `~/.ssh/id_rsa`), it will be reused.
 
 ### One-Line Install
 
@@ -54,10 +57,11 @@ GITHUB_USERNAME=auspbro bash -c \
 This single command will:
 
 1. Detect your platform (macOS / WSL / Ubuntu)
-2. Install base dependencies (`git`, `zsh`, `curl`)
-3. Clone both `dotfiles-public` and `dotfiles-private` as bare repos
-4. Check out all config files into `$HOME`
-5. Run `setup-machine.sh` to install additional software
+2. Generate an Ed25519 SSH key and register it with GitHub (via `gh` CLI)
+3. Install base dependencies (`git`, `zsh`, `curl`)
+4. Clone both `dotfiles-public` and `dotfiles-private` as bare repos
+5. Check out all config files into `$HOME`
+6. Run `setup-machine.sh` to install additional software
 
 ### Post-Install Configuration
 

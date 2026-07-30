@@ -81,33 +81,125 @@ clone_repo() {
   git --git-dir="$git_dir" submodule update --init --recursive
 }
 
-# ── SSH key setup (WSL) ────────────────────────────────────
+# ── SSH key setup ───────────────────────────────────────────
 
-setup_ssh_keys_wsl() {
-  if [[ -e ~/.ssh/id_rsa ]]; then
-    return 0
+# Install gh CLI early (before setup-machine.sh) so we can register SSH keys.
+install_gh_for_ssh() {
+  command -v gh &>/dev/null && return 0
+
+  case "$PLATFORM" in
+    macos)
+      if command -v brew &>/dev/null; then
+        brew install gh
+      else
+        echo "WARNING: Homebrew not found. Install gh manually: https://cli.github.com" >&2
+        return 1
+      fi
+      ;;
+    ubuntu|wsl)
+      # Add GitHub CLI apt source and install
+      if ! command -v gpg &>/dev/null; then
+        sudo apt-get update && sudo apt-get install -y gpg
+      fi
+      local keyring=/usr/share/keyrings/githubcli-archive-keyring.gpg
+      if [[ ! -f "$keyring" ]]; then
+        curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+          | sudo dd of="$keyring" 2>/dev/null
+        sudo chmod go+r "$keyring"
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=$keyring] https://cli.github.com/packages stable main" \
+          | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+      fi
+      sudo apt-get update && sudo apt-get install -y gh
+      ;;
+  esac
+}
+
+# Resolve the SSH key file to use: ed25519 preferred, RSA as fallback.
+resolve_ssh_key_file() {
+  if [[ -f ~/.ssh/id_ed25519 ]]; then
+    echo ~/.ssh/id_ed25519
+  elif [[ -f ~/.ssh/id_rsa ]]; then
+    echo ~/.ssh/id_rsa
   fi
+}
 
-  local win_home downloads
-  win_home="$(cd /mnt/c && cmd.exe /c "echo %HOMEDRIVE%%HOMEPATH%" 2>/dev/null | sed 's/\r$//')"
-  downloads="$(wslpath "$win_home")/Downloads"
+# Generate an Ed25519 key pair and register the public key with GitHub.
+setup_ssh_keys() {
+  mkdir -p -m 700 ~/.ssh
 
-  mkdir -p ~/.ssh
-  (
-    umask 0077
-    : >~/.ssh/id_rsa.tmp
-  )
+  # ── Step 1: Check for existing key ──
+  local key_file
+  key_file="$(resolve_ssh_key_file)"
 
-  if [[ -f "$downloads"/id_rsa ]]; then
-    cat -- "$downloads"/id_rsa >~/.ssh/id_rsa.tmp
-  elif [[ -f "$downloads"/id_rsa.txt ]]; then
-    cat -- "$downloads"/id_rsa.txt >~/.ssh/id_rsa.tmp
+  if [[ -z "$key_file" ]]; then
+    # No key exists — generate Ed25519
+    key_file=~/.ssh/id_ed25519
+    echo "Generating Ed25519 SSH key..."
+    ssh-keygen -t ed25519 -C "$GITHUB_USERNAME@$(hostname)" -f "$key_file" -N ""
   else
-    echo "ERROR: Put your SSH key at ~/.ssh/id_rsa or ${downloads}/id_rsa and retry." >&2
-    exit 1
+    echo "Existing SSH key found: $key_file"
   fi
 
-  mv -- ~/.ssh/id_rsa.tmp ~/.ssh/id_rsa
+  # Start ssh-agent and add key
+  eval "$(ssh-agent -s)" > /dev/null
+  ssh-add "$key_file" 2>/dev/null || true
+
+  # ── Step 2: Ensure gh CLI is available ──
+  if ! command -v gh &>/dev/null; then
+    echo "Installing GitHub CLI (gh) for SSH key registration..."
+    install_gh_for_ssh || {
+      echo ""
+      echo "Could not install gh CLI automatically."
+      echo "To register your SSH key manually:"
+      echo "  1. Copy this key:  cat ${key_file}.pub"
+      echo "  2. Go to: https://github.com/settings/keys"
+      echo "  3. Click 'New SSH key' and paste"
+      return 0
+    }
+  fi
+
+  # ── Step 3: Ensure gh is authenticated ──
+  if ! gh auth status &>/dev/null; then
+    echo "Authenticating with GitHub CLI..."
+    if [[ -t 0 ]] && [[ -n "${DISPLAY-}${WSL_DISTRO_NAME-}${SSH_TTY-}" ]]; then
+      gh auth login --web -h github.com -p ssh || {
+        echo "WARNING: gh auth login failed. Register your SSH key manually:" >&2
+        echo "  cat ${key_file}.pub   # copy the output" >&2
+        echo "  https://github.com/settings/keys" >&2
+        return 0
+      }
+    else
+      echo "Non-interactive environment detected. Register your SSH key manually:" >&2
+      echo "  cat ${key_file}.pub   # copy the output" >&2
+      echo "  https://github.com/settings/keys" >&2
+      return 0
+    fi
+  fi
+
+  # ── Step 4: Ensure admin:public_key scope ──
+  if ! gh ssh-key list &>/dev/null; then
+    echo "Adding admin:public_key scope to GitHub CLI token..."
+    gh auth refresh -h github.com -s admin:public_key || {
+      echo "WARNING: Could not refresh token scope. Register your SSH key manually:" >&2
+      echo "  cat ${key_file}.pub   # copy the output" >&2
+      echo "  https://github.com/settings/keys" >&2
+      return 0
+    }
+  fi
+
+  # ── Step 5: Register key if not already present ──
+  local pub_key_fingerprint
+  pub_key_fingerprint="$(awk '{print $2}' "${key_file}.pub")"
+
+  if gh ssh-key list | grep -qF "$pub_key_fingerprint"; then
+    echo "SSH key already registered with GitHub."
+  else
+    local title
+    title="$(hostname)-$(date +%Y%m%d)"
+    echo "Registering SSH key with GitHub as '$title'..."
+    gh ssh-key add "${key_file}.pub" --title "$title"
+    echo "SSH key registered successfully."
+  fi
 }
 
 # ── Main ────────────────────────────────────────────────────
@@ -141,13 +233,10 @@ main() {
     ubuntu|wsl) install_base_deps_linux ;;
   esac
 
-  # SSH key setup for WSL
-  if [[ "$PLATFORM" == "wsl" ]]; then
-    setup_ssh_keys_wsl
-  fi
+  # SSH key setup (all platforms)
+  setup_ssh_keys
 
   # Clone bare repos
-  mkdir -p -m 700 ~/.ssh
   clone_repo dotfiles-public
   clone_repo dotfiles-private
 
