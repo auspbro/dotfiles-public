@@ -189,6 +189,8 @@ function install_packages() {
     packages+=(dbus-x11)
     # WSL has its own sshd; apt openssh-server conflicts with it
     packages=("${packages[@]/openssh-server/}")
+    # Purge any broken openssh-server leftover from a previous install
+    sudo dpkg --purge --force-remove-reinstreq openssh-server 2>/dev/null || true
   else
     packages+=(gnome-tweak-tool imagemagick iotop tilix remmina wireguard )
   fi
