@@ -56,13 +56,25 @@ GITHUB_USERNAME=auspbro bash -c \
 
 This single command will:
 
-1. Detect your platform (macOS / WSL / Ubuntu)
-2. Auto-detect network proxy (if needed to reach GitHub)
-3. Generate an Ed25519 SSH key and register it with GitHub (via `gh` CLI)
-4. Install base dependencies (`git`, `zsh`, `curl`)
-5. Clone both `dotfiles-public` and `dotfiles-private` as bare repos
-6. Check out all config files into `$HOME`
-7. Run `setup-machine.sh` to install additional software
+1. Pre-authenticate `sudo` (one password prompt for the entire script)
+2. Detect your platform (macOS / WSL / Ubuntu)
+3. Auto-detect network proxy (if needed to reach GitHub)
+4. Generate an Ed25519 SSH key and register it with GitHub (via `gh` CLI — one browser authorization)
+5. Install base dependencies (`git`, `zsh`, `curl`)
+6. Clone both `dotfiles-public` and `dotfiles-private` as bare repos
+7. Check out all config files into `$HOME`
+8. Run `setup-machine.sh` to install additional software (non-interactive)
+
+**Interactive prompts during install:** 1 sudo password + 1 GitHub browser authorization. That's it.
+
+For fully non-interactive install (e.g., automated provisioning):
+
+```bash
+AUTO_YES=1 GITHUB_USERNAME=auspbro bash -c \
+  "$(curl -fsSL 'https://raw.githubusercontent.com/auspbro/dotfiles-public/master/bin/install.sh')"
+```
+
+> `AUTO_YES=1` skips the WSL restart confirmation. `sudo` and `gh auth` still require interaction.
 
 ### Post-Install Configuration
 
@@ -81,7 +93,7 @@ After install completes:
 | **Zsh** (primary) | `.zshrc`, `.zshenv` | Via [zsh4humans](https://github.com/romkatv/zsh4humans) (z4h) |
 | **Powerlevel10k** | `.p10k.zsh`, `.p10k-ascii.zsh`, `.p10k-8color.zsh`, `.p10k-ascii-8color.zsh` | Multiple prompt profiles for different terminal capabilities |
 | **Bash** (fallback) | `.bashrc`, `.bash_profile`, `.bash_aliases` | Minimal bash environment |
-| **Zsh functions** | `dotfiles/functions/` | Autoloaded: `sync-dotfiles`, `toggle-dotfiles`, `bench`, `arith-eval`, `zman` |
+| **Zsh functions** | `dotfiles/functions/` | Autoloaded: `sync-dotfiles`, `toggle-dotfiles`, `auto-proxy`, `bench`, `arith-eval`, `zman` |
 
 ### Terminal Emulators
 
@@ -240,8 +252,7 @@ All Windows setup is handled by `install.sh`. Manual steps:
    wsl.exe --set-default-version 1
    wsl.exe --install -d Ubuntu-22.04
    ```
-2. Download your SSH private key (`id_rsa`) into the Windows `Downloads` folder.
-3. Run the one-line install command from [Quick Start](#quick-start).
+2. Run the one-line install command from [Quick Start](#quick-start). SSH keys are generated and registered automatically.
 
 #### Windows Terminal Configuration
 
@@ -264,12 +275,27 @@ Host github.com
 
 #### Proxy Configuration
 
-`install.sh` automatically detects whether a proxy is needed to reach GitHub:
+Proxy is handled automatically at two levels:
+
+**Install time** — `install.sh` detects proxy before any GitHub access:
 
 1. Uses existing proxy if `http_proxy` / `https_proxy` environment variables are set
 2. Tests direct connection — if it works, no proxy is used
 3. Probes common local proxy ports (Clash `7890`, v2ray `10809`, etc.)
 4. If nothing works, prints a warning and continues
+
+**Shell startup** — `auto-proxy` runs on every new shell (from `.zshrc`):
+
+- Probes local proxy ports and sets env vars + git config automatically
+- Caches result in `~/.cache/auto-proxy` (subsequent shells start in ~100ms)
+- Skips detection if proxy env vars are already set (manual override)
+
+```zsh
+auto-proxy        # auto-detect and configure
+auto-proxy -f     # force re-probe (ignore cache)
+auto-proxy -u     # unset proxy
+auto-proxy -s     # show current status
+```
 
 To manually set a proxy before running install:
 
@@ -278,13 +304,6 @@ export http_proxy=http://127.0.0.1:7890
 export https_proxy=http://127.0.0.1:7890
 GITHUB_USERNAME=auspbro bash -c \
   "$(curl -fsSL 'https://raw.githubusercontent.com/auspbro/dotfiles-public/master/bin/install.sh')"
-```
-
-To unset a previously configured git proxy:
-
-```bash
-git config --global --unset http.proxy
-git config --global --unset https.proxy
 ```
 
 #### Optional: Windows Defender Exclusion
