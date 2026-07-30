@@ -828,5 +828,6 @@ esac
 # Common post-install (all platforms)
 setup_tmux
 install_neovim
+setup_lazyvim
 
 echo "SUCCESS: setup complete for $PLATFORM"
