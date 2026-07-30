@@ -187,6 +187,8 @@ function install_packages() {
 
   if (( WSL )); then
     packages+=(dbus-x11)
+    # WSL has its own sshd; apt openssh-server conflicts with it
+    packages=("${packages[@]/openssh-server/}")
   else
     packages+=(gnome-tweak-tool imagemagick iotop tilix remmina wireguard )
   fi
