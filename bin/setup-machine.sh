@@ -194,8 +194,8 @@ function install_packages() {
   fi
 
   sudo apt-get update
-  # sudo bash -c 'DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::options::=--force-confdef -o DPkg::options::=--force-confold upgrade -y'
-  sudo apt-get install -y "${packages[@]}"
+  export DEBIAN_FRONTEND=noninteractive
+  sudo apt-get install -o DPkg::options::=--force-confdef -o DPkg::options::=--force-confold -y "${packages[@]}"
   sudo apt-get autoremove -y
   sudo apt-get autoclean
 }
@@ -780,6 +780,7 @@ if [[ "$(id -u)" == 0 ]]; then
   exit 1
 fi
 
+sudo -v
 umask g-w,o-w
 
 echo "Setup starting for platform: $PLATFORM"

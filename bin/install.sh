@@ -244,11 +244,11 @@ setup_ssh_keys() {
     }
   fi
 
-  # ── Step 3: Ensure gh is authenticated ──
+  # ── Step 3: Ensure gh is authenticated (with ssh key scope) ──
   if ! gh auth status &>/dev/null; then
     echo "Authenticating with GitHub CLI..."
     if [[ -t 0 ]] && [[ -n "${DISPLAY-}${WSL_DISTRO_NAME-}${SSH_TTY-}" ]]; then
-      gh auth login --web -h github.com -p ssh || {
+      gh auth login --web -h github.com -p ssh -s admin:public_key || {
         echo "WARNING: gh auth login failed. Register your SSH key manually:" >&2
         echo "  cat ${key_file}.pub   # copy the output" >&2
         echo "  https://github.com/settings/keys" >&2
@@ -260,10 +260,8 @@ setup_ssh_keys() {
       echo "  https://github.com/settings/keys" >&2
       return 0
     fi
-  fi
-
-  # ── Step 4: Ensure admin:public_key scope ──
-  if ! gh ssh-key list &>/dev/null; then
+  elif ! gh ssh-key list &>/dev/null; then
+    # Already authenticated but missing scope — refresh once
     echo "Adding admin:public_key scope to GitHub CLI token..."
     gh auth refresh -h github.com -s admin:public_key || {
       echo "WARNING: Could not refresh token scope. Register your SSH key manually:" >&2
@@ -304,6 +302,9 @@ main() {
     exit 1
   fi
 
+  # Pre-authenticate sudo (keeps credentials cached for the script's lifetime)
+  sudo -v
+
   # Detect platform
   detect_platform
   echo "Detected platform: $PLATFORM"
@@ -339,12 +340,16 @@ main() {
   echo "Running setup..."
   bash ~/bin/setup-machine.sh
 
-  # WSL restart prompt
+  # WSL restart prompt (skip with AUTO_YES=1)
   if [[ -t 0 && -n "${WSL_DISTRO_NAME-}" ]]; then
-    read -p "Need to restart WSL to complete installation. Terminate WSL now? [y/N] " -n 1 -r
-    echo
-    if [[ ${REPLY,,} == @(y|yes) ]]; then
+    if [[ "${AUTO_YES:-}" == "1" ]]; then
       wsl.exe --terminate "$WSL_DISTRO_NAME"
+    else
+      read -p "Need to restart WSL to complete installation. Terminate WSL now? [y/N] " -n 1 -r
+      echo
+      if [[ ${REPLY,,} == @(y|yes) ]]; then
+        wsl.exe --terminate "$WSL_DISTRO_NAME"
+      fi
     fi
   fi
 
