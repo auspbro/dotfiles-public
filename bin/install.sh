@@ -211,7 +211,7 @@ resolve_ssh_key_file() {
 
 # Generate an Ed25519 key pair and register the public key with GitHub.
 setup_ssh_keys() {
-  mkdir -p -m 700 ~/.ssh
+  mkdir -p -m 700 ~/.ssh ~/.ssh/s
 
   # ── Step 1: Check for existing key ──
   local key_file
