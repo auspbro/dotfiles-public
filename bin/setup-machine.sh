@@ -417,7 +417,11 @@ function install_nuget() {
   ! command -v nuget.exe &>/dev/null || [[ "$(nuget.exe help)" != "NuGet Version: $v."* ]] || return 0
   local tmp
   tmp="$(mktemp -- ~/bin/nuget.exe.XXXXXX)"
-  curl -fsSLo "$tmp" "https://dist.nuget.org/win-x86-commandline/v${v}/nuget.exe"
+  if ! curl -fsSLo "$tmp" "https://dist.nuget.org/win-x86-commandline/v${v}/nuget.exe"; then
+    echo "WARNING: Failed to download nuget.exe — skipping (may need proxy for dist.nuget.org)" >&2
+    rm -f -- "$tmp"
+    return 0
+  fi
   chmod +x -- "$tmp"
   mv -- "$tmp" ~/bin/nuget.exe
 }
