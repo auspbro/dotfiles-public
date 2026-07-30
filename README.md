@@ -42,7 +42,9 @@ Private files live in `~/.dotfiles-private` and are **never** committed to the p
 - A GitHub account
 - `git` and `curl` installed
 
-> SSH key generation (Ed25519) and GitHub registration are handled automatically by `install.sh`.
+> `dotfiles-public` is cloned via **HTTPS** — no SSH key required to get started.
+> SSH key generation (Ed25519) and GitHub registration happen automatically after the public repo is cloned,
+> and are needed only for `dotfiles-private` (secrets) and `git push`.
 > If you already have an SSH key (`~/.ssh/id_ed25519` or `~/.ssh/id_rsa`), it will be reused.
 
 ### One-Line Install
@@ -59,11 +61,13 @@ This single command will:
 1. Pre-authenticate `sudo` (one password prompt for the entire script)
 2. Detect your platform (macOS / WSL / Ubuntu)
 3. Auto-detect network proxy (if needed to reach GitHub)
-4. Generate an Ed25519 SSH key and register it with GitHub (via `gh` CLI — one browser authorization)
-5. Install base dependencies (`git`, `zsh`, `curl`)
-6. Clone both `dotfiles-public` and `dotfiles-private` as bare repos
-7. Check out all config files into `$HOME`
-8. Run `setup-machine.sh` to install additional software (non-interactive)
+4. Install base dependencies (`git`, `zsh`, `curl`)
+5. Clone `dotfiles-public` via **HTTPS** (no auth required)
+6. Generate an Ed25519 SSH key and register it with GitHub (via `gh` CLI — one browser authorization)
+7. Verify SSH connectivity and switch `dotfiles-public` origin to SSH
+8. Clone `dotfiles-private` via SSH
+9. Check out all config files into `$HOME`
+10. Run `setup-machine.sh` to install additional software (non-interactive)
 
 **Interactive prompts during install:** 1 sudo password + 1 GitHub browser authorization. That's it.
 
@@ -75,6 +79,13 @@ AUTO_YES=1 GITHUB_USERNAME=auspbro bash -c \
 ```
 
 > `AUTO_YES=1` skips the WSL restart confirmation. `sudo` and `gh auth` still require interaction.
+
+To skip SSH key setup entirely (public dotfiles only, no `dotfiles-private` or `sync-dotfiles` push):
+
+```bash
+SKIP_SSH_SETUP=1 GITHUB_USERNAME=auspbro bash -c \
+  "$(curl -fsSL 'https://raw.githubusercontent.com/auspbro/dotfiles-public/master/bin/install.sh')"
+```
 
 ### Post-Install Configuration
 
@@ -252,7 +263,7 @@ All Windows setup is handled by `install.sh`. Manual steps:
    wsl.exe --set-default-version 1
    wsl.exe --install -d Ubuntu-22.04
    ```
-2. Run the one-line install command from [Quick Start](#quick-start). SSH keys are generated and registered automatically.
+2. Run the one-line install command from [Quick Start](#quick-start). The public repo is cloned via HTTPS first; SSH keys are generated and registered automatically afterward.
 
 #### Windows Terminal Configuration
 
