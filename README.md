@@ -57,11 +57,12 @@ GITHUB_USERNAME=auspbro bash -c \
 This single command will:
 
 1. Detect your platform (macOS / WSL / Ubuntu)
-2. Generate an Ed25519 SSH key and register it with GitHub (via `gh` CLI)
-3. Install base dependencies (`git`, `zsh`, `curl`)
-4. Clone both `dotfiles-public` and `dotfiles-private` as bare repos
-5. Check out all config files into `$HOME`
-6. Run `setup-machine.sh` to install additional software
+2. Auto-detect network proxy (if needed to reach GitHub)
+3. Generate an Ed25519 SSH key and register it with GitHub (via `gh` CLI)
+4. Install base dependencies (`git`, `zsh`, `curl`)
+5. Clone both `dotfiles-public` and `dotfiles-private` as bare repos
+6. Check out all config files into `$HOME`
+7. Run `setup-machine.sh` to install additional software
 
 ### Post-Install Configuration
 
@@ -259,6 +260,31 @@ Host github.com
   Port 443
   User git
   IdentityFile ~/.ssh/id_rsa
+```
+
+#### Proxy Configuration
+
+`install.sh` automatically detects whether a proxy is needed to reach GitHub:
+
+1. Uses existing proxy if `http_proxy` / `https_proxy` environment variables are set
+2. Tests direct connection — if it works, no proxy is used
+3. Probes common local proxy ports (Clash `7890`, v2ray `10809`, etc.)
+4. If nothing works, prints a warning and continues
+
+To manually set a proxy before running install:
+
+```bash
+export http_proxy=http://127.0.0.1:7890
+export https_proxy=http://127.0.0.1:7890
+GITHUB_USERNAME=auspbro bash -c \
+  "$(curl -fsSL 'https://raw.githubusercontent.com/auspbro/dotfiles-public/master/bin/install.sh')"
+```
+
+To unset a previously configured git proxy:
+
+```bash
+git config --global --unset http.proxy
+git config --global --unset https.proxy
 ```
 
 #### Optional: Windows Defender Exclusion

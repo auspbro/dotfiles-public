@@ -57,6 +57,92 @@ install_base_deps_linux() {
   fi
 }
 
+# ── Proxy detection ─────────────────────────────────────────
+
+# Common local proxy ports to probe, in priority order.
+readonly PROXY_CANDIDATES=(
+  "http://127.0.0.1:7890"    # Clash (HTTP)
+  "http://127.0.0.1:7891"    # Clash (mixed)
+  "http://127.0.0.1:10809"   # v2ray (HTTP)
+  "http://127.0.0.1:1080"    # Generic SOCKS-to-HTTP
+  "socks5://127.0.0.1:7890"  # Clash (SOCKS5)
+  "socks5://127.0.0.1:10809" # v2ray (SOCKS5)
+  "socks5://127.0.0.1:1080"  # Generic SOCKS5
+)
+
+# Detect and configure proxy for GitHub access.
+# Sets http_proxy/https_proxy env vars and git http.proxy config.
+detect_and_configure_proxy() {
+  # ── Step 1: Env vars already set? ──
+  local existing_proxy="${http_proxy:-${HTTP_PROXY:-${https_proxy:-${HTTPS_PROXY:-}}}}"
+  if [[ -n "$existing_proxy" ]]; then
+    echo "Using existing proxy from environment: $existing_proxy"
+    _apply_proxy "$existing_proxy"
+    return 0
+  fi
+
+  # ── Step 2: Try direct connection ──
+  echo "Testing direct connection to GitHub..."
+  if curl -s --connect-timeout 5 -o /dev/null -w '' https://github.com 2>/dev/null; then
+    echo "Direct connection to GitHub OK — no proxy needed."
+    return 0
+  fi
+  echo "Direct connection failed. Probing for local proxy..."
+
+  # ── Step 3: Probe local proxy ports ──
+  local candidate
+  for candidate in "${PROXY_CANDIDATES[@]}"; do
+    # Extract host:port for a quick TCP connect test
+    local addr="${candidate#*//}"        # 127.0.0.1:7890
+    local host="${addr%%:*}"             # 127.0.0.1
+    local port="${addr##*:}"             # 7890
+
+    # Quick TCP check — is the port open?
+    if ! (echo >/dev/tcp/"$host"/"$port") 2>/dev/null; then
+      continue
+    fi
+
+    # Port is open — verify it actually proxies to GitHub
+    if curl -s --connect-timeout 5 -o /dev/null -w '' --proxy "$candidate" https://github.com 2>/dev/null; then
+      echo "Found working proxy: $candidate"
+      _apply_proxy "$candidate"
+      return 0
+    fi
+  done
+
+  # ── Step 4: Nothing worked ──
+  echo ""
+  echo "WARNING: Cannot reach GitHub directly or via any local proxy." >&2
+  echo "The script will continue but may fail on GitHub operations." >&2
+  echo "" >&2
+  echo "To fix, set proxy manually before running this script:" >&2
+  echo "  export http_proxy=http://127.0.0.1:7890" >&2
+  echo "  export https_proxy=http://127.0.0.1:7890" >&2
+  echo "" >&2
+  return 0
+}
+
+# Apply proxy to environment and git config.
+_apply_proxy() {
+  local proxy="$1"
+
+  export http_proxy="$proxy"
+  export https_proxy="$proxy"
+  export HTTP_PROXY="$proxy"
+  export HTTPS_PROXY="$proxy"
+
+  # git config — only set if not already configured
+  local current_git_proxy
+  current_git_proxy="$(git config --global http.proxy 2>/dev/null || true)"
+  if [[ -z "$current_git_proxy" ]]; then
+    git config --global http.proxy "$proxy"
+    git config --global https.proxy "$proxy"
+    echo "Git proxy configured: $proxy"
+  else
+    echo "Git proxy already configured: $current_git_proxy (keeping existing)"
+  fi
+}
+
 # ── Bare repo cloning ──────────────────────────────────────
 
 clone_repo() {
@@ -226,6 +312,9 @@ main() {
     echo "ERROR: Unsupported platform. Only macOS, Ubuntu/Debian, and WSL are supported." >&2
     exit 1
   fi
+
+  # Detect and configure proxy (before any GitHub access)
+  detect_and_configure_proxy
 
   # Install base dependencies
   case "$PLATFORM" in
