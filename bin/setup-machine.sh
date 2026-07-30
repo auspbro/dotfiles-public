@@ -785,7 +785,7 @@ case "$PLATFORM" in
 
   ubuntu)
     add_to_sudoers
-    install_packages_debian
+    install_packages
     install_ripgrep
     install_bat
     install_gh
@@ -798,7 +798,7 @@ case "$PLATFORM" in
 
   wsl)
     add_to_sudoers
-    install_packages_debian
+    install_packages
     install_fonts
     install_ripgrep
     install_bat
