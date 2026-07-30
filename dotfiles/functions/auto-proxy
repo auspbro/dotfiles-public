@@ -1,0 +1,113 @@
+# Auto-detect and configure proxy for GitHub access.
+# Probes common local proxy ports and sets env vars + git config.
+# Caches the result in ~/.cache/auto-proxy to avoid re-probing on every shell start.
+#
+# Usage:
+#   auto-proxy        # detect and configure
+#   auto-proxy -f     # force re-probe (ignore cache)
+#   auto-proxy -u     # unset proxy
+#   auto-proxy -s     # show current status
+
+emulate -L zsh -o no_unset
+
+local cache_dir="$HOME/.cache"
+local cache_file="$cache_dir/auto-proxy"
+local force=0 do_unset=0 show=0 OPTIND OPTARG
+
+while getopts ":fus" opt; do
+  case $opt in
+    f) force=1;;
+    u) do_unset=1;;
+    s) show=1;;
+    \?) print -r -- "auto-proxy: invalid option: $OPTARG" >&2; return 1;;
+    :)  print -r -- "auto-proxy: missing argument: $OPTARG" >&2; return 1;;
+  esac
+done
+
+# -s: show status
+if (( show )); then
+  print "http_proxy=${http_proxy:-unset}"
+  print "https_proxy=${https_proxy:-unset}"
+  print "git proxy=$(git config --global http.proxy 2>/dev/null || echo unset)"
+  if [[ -f "$cache_file" ]]; then
+    print "cache=$cache_file ($(head -1 "$cache_file"))"
+  else
+    print "cache=none"
+  fi
+  return 0
+fi
+
+# -u: unset proxy
+if (( do_unset )); then
+  unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY all_proxy
+  git config --global --unset http.proxy 2>/dev/null
+  git config --global --unset https.proxy 2>/dev/null
+  rm -f "$cache_file"
+  print "auto-proxy: proxy unset"
+  return 0
+fi
+
+# Already set in environment? Respect it.
+if [[ -n "${http_proxy:-}${https_proxy:-}${HTTP_PROXY:-}${HTTPS_PROXY:-}" ]]; then
+  return 0
+fi
+
+# Helper: quick TCP connect test (zsh builtin, no external commands)
+_tcp_connect() {
+  local addr="${1#*//}"  # strip protocol prefix
+  local host="${addr%%:*}"
+  local port="${addr##*:}"
+  # zsh net redirect: try to connect, timeout 0.3s
+  { echo >/dev/tcp/"$host"/"$port" } 2>/dev/null
+}
+
+# Helper: set proxy env vars and git config
+_apply_proxy() {
+  local proxy="$1"
+  export http_proxy="$proxy"
+  export https_proxy="$proxy"
+  export HTTP_PROXY="$proxy"
+  export HTTPS_PROXY="$proxy"
+  git config --global http.proxy "$proxy" 2>/dev/null
+  git config --global https.proxy "$proxy" 2>/dev/null
+}
+
+# Try cached proxy first (if not forced)
+if (( ! force )) && [[ -f "$cache_file" ]]; then
+  local cached_proxy
+  cached_proxy="$(head -1 "$cache_file")"
+  if [[ -n "$cached_proxy" ]] && _tcp_connect "$cached_proxy"; then
+    _apply_proxy "$cached_proxy"
+    return 0
+  fi
+  # Cache stale — remove and fall through to full probe
+  rm -f "$cache_file"
+fi
+
+# Probe candidates (HTTP first, then SOCKS5)
+local candidates=(
+  "http://127.0.0.1:7890"    # Clash
+  "http://127.0.0.1:7891"    # Clash mixed
+  "http://127.0.0.1:10809"   # v2ray
+  "http://127.0.0.1:1080"    # generic
+  "socks5://127.0.0.1:7890"  # Clash SOCKS5
+  "socks5://127.0.0.1:10809" # v2ray SOCKS5
+  "socks5://127.0.0.1:1080"  # generic SOCKS5
+)
+
+local candidate
+for candidate in "${candidates[@]}"; do
+  if _tcp_connect "$candidate"; then
+    _apply_proxy "$candidate"
+    mkdir -p "$cache_dir"
+    print -r -- "$candidate" > "$cache_file"
+    return 0
+  fi
+done
+
+# No proxy found — ensure clean state
+unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY all_proxy
+git config --global --unset http.proxy 2>/dev/null
+git config --global --unset https.proxy 2>/dev/null
+rm -f "$cache_file"
+return 0
