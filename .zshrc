@@ -334,6 +334,10 @@ POSTEDIT=$'\n\n\e[2A'
 # Place before .zshrc-private so private config can override if needed
 auto-proxy
 
+# Git identity (same across all machines)
+git config --global user.name "auspbro" 2>/dev/null
+git config --global user.email "0x2fxx@gmail.com" 2>/dev/null
+
 z4h source -c -- $ZDOTDIR/.zshrc-private
 z4h compile -- $ZDOTDIR/{.zshenv,.zprofile,.zshrc,.zlogin,.zlogout}
 
