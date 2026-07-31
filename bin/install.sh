@@ -345,17 +345,14 @@ main() {
     exit 1
   fi
 
-  # Check sudo access
-  if ! sudo -n true 2>/dev/null; then
+  # Check sudo access (allows password prompt)
+  if ! sudo -v 2>/dev/null; then
     echo "ERROR: This script requires sudo access." >&2
     echo "On a fresh WSL instance, add your user to the sudo group first:" >&2
     echo "  sudo usermod -aG sudo \$USER" >&2
     echo "Then log out and back in, or run: exec su - \$USER" >&2
     exit 1
   fi
-
-  # Pre-authenticate sudo (keeps credentials cached for the script's lifetime)
-  sudo -v
 
   # Detect platform
   detect_platform
