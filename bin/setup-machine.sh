@@ -430,6 +430,12 @@ function install_websocat() {
   mv -- "$tmp" ~/bin/websocat
 }
 
+function install_herdr() {
+  ! command -v herdr &>/dev/null || return 0
+  echo "Installing herdr (agent multiplexer)..."
+  curl -fsSL https://herdr.dev/install.sh | sh
+}
+
 function fix_locale() {
   sudo tee /etc/default/locale >/dev/null <<<'LC_ALL="C.UTF-8"'
   # Generate en_US.UTF-8 if not already available (WSL often lacks it)
@@ -789,6 +795,7 @@ case "$PLATFORM" in
   macos)
     ensure_homebrew
     install_packages_macos
+    install_herdr
     ;;
 
   ubuntu)
@@ -800,6 +807,7 @@ case "$PLATFORM" in
     install_fzf
     install_fx
     install_websocat
+    install_herdr
     disable_motd_news
     fix_locale
     ;;
@@ -813,6 +821,7 @@ case "$PLATFORM" in
     install_gh
     install_fzf
     install_fx
+    install_herdr
     patch_ssh
     disable_motd_news
     fix_locale
