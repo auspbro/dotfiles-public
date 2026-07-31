@@ -349,6 +349,67 @@ wsl.exe --unregister DISTRO       # delete it
 
 Then follow the [Windows / WSL Setup](#windows--wsl-setup) steps above to recreate.
 
+## Testing / Validation
+
+To verify the one-click install works correctly, use one of these isolated environments:
+
+### Docker Container (Recommended)
+
+Using a clean Ubuntu image:
+
+```bash
+docker run -it ubuntu:22.04 bash -c '
+  apt-get update && apt-get install -y curl sudo git &&
+  GITHUB_USERNAME=auspbro bash -c \
+    "$(curl -fsSL "https://raw.githubusercontent.com/auspbro/dotfiles-public/feat/https-clone-public-repo/bin/install.sh")"
+'
+```
+
+Or using the project's pre-built image (if available):
+
+```bash
+docker run -it alanenv bash -c '
+  GITHUB_USERNAME=auspbro bash -c \
+    "$(curl -fsSL "https://raw.githubusercontent.com/auspbro/dotfiles-public/feat/https-clone-public-repo/bin/install.sh")"
+'
+```
+
+### Local Test User
+
+Create a temporary user to avoid polluting your environment:
+
+```bash
+# Create temp user
+sudo useradd -m testuser && sudo passwd testuser
+
+# Run install
+sudo -u testuser -i bash -c '
+  GITHUB_USERNAME=auspbro bash -c \
+    "$(curl -fsSL "https://raw.githubusercontent.com/auspbro/dotfiles-public/feat/https-clone-public-repo/bin/install.sh")"
+'
+
+# Clean up when done
+sudo userdel -r testuser
+```
+
+### WSL Fresh Instance
+
+```powershell
+# From Windows PowerShell
+wsl --install -d Ubuntu-22.04 --name test-dotfiles
+
+# Enter the new instance and run the one-liner
+# ...
+
+# Clean up when done
+wsl --unregister test-dotfiles
+```
+
+**Notes:**
+- Install requires interaction: 1 sudo password + 1 GitHub browser authorization
+- Full setup (`setup-machine.sh`) takes 10–20 minutes
+- For testing only the bootstrap script without running `setup-machine.sh`, you can interrupt after `bootstrap-dotfiles.sh` completes
+
 ## Acknowledgments
 
 - [romkatv/dotfiles-public](https://github.com/romkatv/dotfiles-public) — the foundation this repo is built on
