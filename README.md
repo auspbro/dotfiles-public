@@ -395,13 +395,29 @@ sudo userdel -r testuser
 ### WSL Fresh Instance
 
 ```powershell
-# From Windows PowerShell
+# From Windows PowerShell — create a clean WSL instance
 wsl --install -d Ubuntu-22.04 --name test-dotfiles
+```
 
-# Enter the new instance and run the one-liner
-# ...
+Then enter the new instance and run one of these:
 
-# Clean up when done
+**Full install (public + private):**
+
+```bash
+GITHUB_USERNAME=auspbro bash -c \
+  "$(curl -fsSL 'https://raw.githubusercontent.com/auspbro/dotfiles-public/feat/https-clone-public-repo/bin/install.sh')"
+```
+
+**Public only (no SSH key setup, no private repo):**
+
+```bash
+SKIP_SSH_SETUP=1 GITHUB_USERNAME=auspbro bash -c \
+  "$(curl -fsSL 'https://raw.githubusercontent.com/auspbro/dotfiles-public/feat/https-clone-public-repo/bin/install.sh')"
+```
+
+Clean up when done:
+
+```powershell
 wsl --unregister test-dotfiles
 ```
 
