@@ -170,7 +170,7 @@ clone_repo() {
   git --git-dir="$git_dir" fetch
   git --git-dir="$git_dir" reset origin/master
   git --git-dir="$git_dir" branch -u origin/master
-  git --git-dir="$git_dir" checkout -- .
+  GIT_WORK_TREE="$HOME" git --git-dir="$git_dir" checkout -- .
   git --git-dir="$git_dir" submodule update --init --recursive
 }
 
