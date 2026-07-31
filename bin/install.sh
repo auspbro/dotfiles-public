@@ -345,6 +345,15 @@ main() {
     exit 1
   fi
 
+  # Check sudo access
+  if ! sudo -n true 2>/dev/null; then
+    echo "ERROR: This script requires sudo access." >&2
+    echo "On a fresh WSL instance, add your user to the sudo group first:" >&2
+    echo "  sudo usermod -aG sudo \$USER" >&2
+    echo "Then log out and back in, or run: exec su - \$USER" >&2
+    exit 1
+  fi
+
   # Pre-authenticate sudo (keeps credentials cached for the script's lifetime)
   sudo -v
 
@@ -376,7 +385,11 @@ main() {
   switch_repo_to_ssh dotfiles-public
 
   # Clone private repo via SSH (requires auth)
-  clone_repo dotfiles-private ssh
+  if [[ "${SKIP_SSH_SETUP:-}" != "1" ]]; then
+    clone_repo dotfiles-private ssh
+  else
+    echo "Skipping dotfiles-private clone (SKIP_SSH_SETUP=1)."
+  fi
 
   # Add upstream remote for dotfiles-public (if not the original author)
   if [[ "$GITHUB_USERNAME" != romkatv ]]; then
