@@ -399,7 +399,17 @@ sudo userdel -r testuser
 wsl --install -d Ubuntu-22.04 --name test-dotfiles
 ```
 
-Then enter the new instance and run one of these:
+Then enter the new instance and set up sudo access first:
+
+```bash
+# Set password and add to sudo group
+passwd
+sudo usermod -aG sudo $USER
+# Log out and back in for group change to take effect
+exec su - $USER
+```
+
+Now run one of these:
 
 **Full install (public + private):**
 
@@ -422,9 +432,10 @@ wsl --unregister test-dotfiles
 ```
 
 **Notes:**
-- Install requires interaction: 1 sudo password + 1 GitHub browser authorization
+- Fresh WSL instances require `passwd` + `sudo usermod -aG sudo $USER` before running install
+- Full install requires interaction: 1 sudo password + 1 GitHub browser authorization
+- Public-only install skips SSH key setup and `dotfiles-private` clone
 - Full setup (`setup-machine.sh`) takes 10–20 minutes
-- For testing only the bootstrap script without running `setup-machine.sh`, you can interrupt after `bootstrap-dotfiles.sh` completes
 
 ## Acknowledgments
 
