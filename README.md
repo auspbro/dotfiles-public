@@ -144,6 +144,18 @@ tmux-fancy  # fancy config  → .config/tmux/tmux.fancy.conf
 | **Neovim (VSCode extension)** | `.config/nvim/init_vscode.vim` | For VSCode Neovim plugin |
 | **Clang-format** | `.clang-format` | Google style, 100-column limit, left pointer alignment |
 
+### CLI Tools (via `setup-machine.sh`)
+
+| Tool | Purpose |
+|------|---------|
+| [**herdr**](https://herdr.dev) | Agent multiplexer — run multiple coding agents (Claude Code, Codex, etc.) in one terminal with persistent sessions |
+| **ripgrep** | Fast recursive grep |
+| **bat** | `cat` with syntax highlighting |
+| **fzf** | Fuzzy finder |
+| **gh** | GitHub CLI |
+| **fx** | Interactive JSON viewer |
+| **websocat** | WebSocket client |
+
 ### Docker Development Environment
 
 `bin/build_docker_env.sh` builds a Docker image (`alanenv`) based on Ubuntu 22.04 with common development tools pre-installed.
