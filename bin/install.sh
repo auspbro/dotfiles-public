@@ -153,12 +153,6 @@ clone_repo() {
   local repo=$1
   local git_dir="$HOME/.$repo"
   local ssh_uri="git@github.com:$GITHUB_USERNAME/$repo.git"
-  local uri="$ssh_uri"
-
-  # Use HTTPS + token when available (avoids SSH host key prompts on fresh machines)
-  if [[ -n "${GH_TOKEN:-${GITHUB_TOKEN:-}}" ]]; then
-    uri="https://${GH_TOKEN:-$GITHUB_TOKEN}@github.com/$GITHUB_USERNAME/$repo.git"
-  fi
 
   if [[ -e "$git_dir" ]]; then
     echo "Repository $repo already exists at $git_dir, skipping clone."
@@ -169,12 +163,19 @@ clone_repo() {
   git --git-dir="$git_dir" init -b master
   git --git-dir="$git_dir" config core.bare false
   git --git-dir="$git_dir" config status.showuntrackedfiles no
-  git --git-dir="$git_dir" remote add origin "$uri"
-  git --git-dir="$git_dir" fetch
-  # Switch remote back to SSH so token doesn't linger in git config
-  if [[ "$uri" != "$ssh_uri" ]]; then
+  git --git-dir="$git_dir" remote add origin "$ssh_uri"
+
+  if [[ -n "${GH_TOKEN:-${GITHUB_TOKEN:-}}" ]]; then
+    # Use HTTPS + token via http.extraHeader (token never stored in git config or remote URL)
+    local token="${GH_TOKEN:-$GITHUB_TOKEN}"
+    local https_uri="https://github.com/$GITHUB_USERNAME/$repo.git"
+    git --git-dir="$git_dir" remote set-url origin "$https_uri"
+    git --git-dir="$git_dir" -c "http.extraHeader=Authorization: token $token" fetch
     git --git-dir="$git_dir" remote set-url origin "$ssh_uri"
+  else
+    git --git-dir="$git_dir" fetch
   fi
+
   git --git-dir="$git_dir" reset origin/master
   git --git-dir="$git_dir" branch -u origin/master
   git --git-dir="$git_dir" checkout -- .
@@ -261,6 +262,17 @@ setup_ssh_keys() {
   # ── Step 3: Ensure gh is authenticated (with ssh key scope) ──
   if [[ -n "${GH_TOKEN:-${GITHUB_TOKEN:-}}" ]]; then
     echo "Using GitHub token from environment (GH_TOKEN/GITHUB_TOKEN)."
+    if ! gh ssh-key list &>/dev/null; then
+      echo "WARNING: GH_TOKEN lacks 'admin:public_key' scope." >&2
+      echo "  Either regenerate the token with these scopes:" >&2
+      echo "    - admin:public_key" >&2
+      echo "    - repo" >&2
+      echo "  Or run: gh auth refresh -h github.com -s admin:public_key" >&2
+      echo "  Or register your SSH key manually:" >&2
+      echo "    cat ${key_file}.pub" >&2
+      echo "    https://github.com/settings/keys" >&2
+      return 0
+    fi
   elif ! gh auth status &>/dev/null; then
     echo "Authenticating with GitHub CLI..."
     if [[ -t 0 ]] && [[ -n "${DISPLAY-}${WSL_DISTRO_NAME-}${SSH_TTY-}" ]]; then
