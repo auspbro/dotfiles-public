@@ -410,11 +410,3 @@ export PATH=$HOME/.mimocode/bin:$PATH
 [[ -f ~/claude-infra-env/bin/activate ]] && source ~/claude-infra-env/bin/activate
 
 alias cc='claude --dangerously-skip-permissions'
-
-# Prevent dotfiles bare repo env vars from leaking into tools that use git.
-# When toggle-dotfiles is active (GIT_WORK_TREE=~), these tools would fail
-# with "fatal: working tree already exists" on any git operation.
-for _cmd in nvim vim vi; do
-  eval "$_cmd() { env -u GIT_DIR -u GIT_WORK_TREE $cmd \"\$@\"; }"
-done
-unset _cmd
