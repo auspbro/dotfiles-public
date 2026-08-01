@@ -59,22 +59,22 @@ This single command will:
 1. Pre-authenticate `sudo` (one password prompt for the entire script)
 2. Detect your platform (macOS / WSL / Ubuntu)
 3. Auto-detect network proxy (if needed to reach GitHub)
-4. Generate an Ed25519 SSH key and register it with GitHub (via `gh` CLI — one browser authorization)
+4. Generate an Ed25519 SSH key and register it with GitHub (via `gh` CLI — one browser authorization, skipped if `GH_TOKEN` is set)
 5. Install base dependencies (`git`, `zsh`, `curl`)
 6. Clone both `dotfiles-public` and `dotfiles-private` as bare repos
 7. Check out all config files into `$HOME`
 8. Run `setup-machine.sh` to install additional software (non-interactive)
 
-**Interactive prompts during install:** 1 sudo password + 1 GitHub browser authorization. That's it.
+**Interactive prompts during install:** 1 sudo password + 1 GitHub browser authorization (skipped with `GH_TOKEN`). That's it.
 
 For fully non-interactive install (e.g., automated provisioning):
 
 ```bash
-AUTO_YES=1 GITHUB_USERNAME=auspbro bash -c \
+GH_TOKEN=ghp_xxxx AUTO_YES=1 GITHUB_USERNAME=auspbro bash -c \
   "$(curl -fsSL 'https://raw.githubusercontent.com/auspbro/dotfiles-public/master/bin/install.sh')"
 ```
 
-> `AUTO_YES=1` skips the WSL restart confirmation. `sudo` and `gh auth` still require interaction.
+> `GH_TOKEN` (or `GITHUB_TOKEN`) skips the browser authorization — the token is used for SSH key registration and HTTPS clone, then the remote is switched back to SSH. Token needs `admin:public_key` + `repo` scopes. `AUTO_YES=1` skips the WSL restart confirmation. Only `sudo` still requires interaction.
 
 ### Post-Install Configuration
 
