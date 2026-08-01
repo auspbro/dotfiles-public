@@ -76,6 +76,15 @@ GH_TOKEN=ghp_xxxx AUTO_YES=1 GITHUB_USERNAME=auspbro bash -c \
 
 > `GH_TOKEN` (or `GITHUB_TOKEN`) skips the browser authorization — the token is used for SSH key registration and HTTPS clone, then the remote is switched back to SSH. Token needs `admin:public_key` + `repo` scopes. `AUTO_YES=1` skips the WSL restart confirmation. Only `sudo` still requires interaction.
 
+For users in China, add `APT_MIRROR` to speed up package downloads:
+
+```bash
+APT_MIRROR=mirrors.aliyun.com GH_TOKEN=ghp_xxxx GITHUB_USERNAME=auspbro bash -c \
+  "$(curl -fsSL 'https://raw.githubusercontent.com/auspbro/dotfiles-public/master/bin/install.sh')"
+```
+
+Common mirrors: `mirrors.aliyun.com`, `mirrors.tuna.tsinghua.edu.cn`, `mirrors.ustc.edu.cn`, `mirrors.huaweicloud.com`
+
 ### Post-Install Configuration
 
 After install completes:
@@ -295,6 +304,15 @@ auto-proxy        # auto-detect and configure
 auto-proxy -f     # force re-probe (ignore cache)
 auto-proxy -u     # unset proxy
 auto-proxy -s     # show current status
+```
+
+#### APT Mirror (China)
+
+Set `APT_MIRROR` to replace Ubuntu/Debian apt sources with a domestic mirror before the first `apt-get update`. Original `sources.list` is backed up to `sources.list.bak`.
+
+```bash
+APT_MIRROR=mirrors.aliyun.com GITHUB_USERNAME=auspbro bash -c \
+  "$(curl -fsSL 'https://raw.githubusercontent.com/auspbro/dotfiles-public/master/bin/install.sh')"
 ```
 
 To manually set a proxy before running install:
