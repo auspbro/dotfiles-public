@@ -75,6 +75,8 @@ configure_apt_mirror() {
     -e "s|http://deb.debian.org/debian|http://$mirror/debian|g" \
     -e "s|http://security.debian.org/debian-security|http://$mirror/debian-security|g" \
     /etc/apt/sources.list
+  # Refresh package lists from the new mirror
+  sudo apt-get update
 }
 
 install_base_deps_linux() {
