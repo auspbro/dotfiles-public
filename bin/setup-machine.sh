@@ -136,39 +136,20 @@ function install_packages() {
     bzip2
     build-essential
     ca-certificates
-    clang-format
     cmake
     command-not-found
     curl
     dconf-cli
     dos2unix
-    g++
     gawk
-    
-    # gedit
     git
-    gnome-icon-theme
     gzip
     htop
-    jsonnet
     jq
     lftp
-    libglpk-dev
-    libncurses-dev
-    libxml2-utils
-    man
-    meld
     moreutils
-    # nano
-    openssh-server
-    # p7zip-full
-    # p7zip-rar
-    # perl
-    poppler-utils
     python3
     python3-pip
-    pigz
-    software-properties-common
     tree
     unrar
     unzip
