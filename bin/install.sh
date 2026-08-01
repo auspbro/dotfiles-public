@@ -3,6 +3,10 @@
 # Unified entry point for dotfiles deployment.
 # Usage: bash -c "$(curl -fsSL https://raw.githubusercontent.com/YOUR_USER/dotfiles-public/master/bin/install.sh)"
 #
+# Set GH_TOKEN (or GITHUB_TOKEN) for fully non-interactive installation:
+#   GH_TOKEN=ghp_xxxx bash -c "$(curl -fsSL ...)"
+# Token needs: admin:public_key (SSH key registration) + repo (clone access).
+#
 # Requires: GITHUB_USERNAME environment variable set.
 # Supports: macOS, Ubuntu/Debian, Windows WSL.
 
@@ -148,7 +152,13 @@ _apply_proxy() {
 clone_repo() {
   local repo=$1
   local git_dir="$HOME/.$repo"
-  local uri="git@github.com:$GITHUB_USERNAME/$repo.git"
+  local ssh_uri="git@github.com:$GITHUB_USERNAME/$repo.git"
+  local uri="$ssh_uri"
+
+  # Use HTTPS + token when available (avoids SSH host key prompts on fresh machines)
+  if [[ -n "${GH_TOKEN:-${GITHUB_TOKEN:-}}" ]]; then
+    uri="https://${GH_TOKEN:-$GITHUB_TOKEN}@github.com/$GITHUB_USERNAME/$repo.git"
+  fi
 
   if [[ -e "$git_dir" ]]; then
     echo "Repository $repo already exists at $git_dir, skipping clone."
@@ -161,6 +171,10 @@ clone_repo() {
   git --git-dir="$git_dir" config status.showuntrackedfiles no
   git --git-dir="$git_dir" remote add origin "$uri"
   git --git-dir="$git_dir" fetch
+  # Switch remote back to SSH so token doesn't linger in git config
+  if [[ "$uri" != "$ssh_uri" ]]; then
+    git --git-dir="$git_dir" remote set-url origin "$ssh_uri"
+  fi
   git --git-dir="$git_dir" reset origin/master
   git --git-dir="$git_dir" branch -u origin/master
   git --git-dir="$git_dir" checkout -- .
@@ -245,7 +259,9 @@ setup_ssh_keys() {
   fi
 
   # ── Step 3: Ensure gh is authenticated (with ssh key scope) ──
-  if ! gh auth status &>/dev/null; then
+  if [[ -n "${GH_TOKEN:-${GITHUB_TOKEN:-}}" ]]; then
+    echo "Using GitHub token from environment (GH_TOKEN/GITHUB_TOKEN)."
+  elif ! gh auth status &>/dev/null; then
     echo "Authenticating with GitHub CLI..."
     if [[ -t 0 ]] && [[ -n "${DISPLAY-}${WSL_DISTRO_NAME-}${SSH_TTY-}" ]]; then
       gh auth login --web -h github.com -p ssh -s admin:public_key || {
@@ -325,6 +341,15 @@ main() {
 
   # SSH key setup (all platforms)
   setup_ssh_keys
+
+  # Pre-populate known_hosts to avoid SSH host key prompt during clone
+  if [[ -z "${GH_TOKEN:-${GITHUB_TOKEN:-}}" ]]; then
+    if ! ssh-keygen -F github.com &>/dev/null; then
+      echo "Adding github.com to known_hosts..."
+      mkdir -p -m 700 ~/.ssh
+      ssh-keyscan -t ed25519,rsa github.com >> ~/.ssh/known_hosts 2>/dev/null
+    fi
+  fi
 
   # Clone bare repos
   clone_repo dotfiles-public
