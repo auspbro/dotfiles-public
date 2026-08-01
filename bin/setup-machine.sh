@@ -377,7 +377,7 @@ function install_fzf() {
   if [[ ! -d ~/.fzf ]]; then
     git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
   fi
-  ~/.fzf/install --all --no-bash --no-fish
+  ~/.fzf/install --all --no-bash --no-fish --no-zsh
 }
 
 function install_fx() {
