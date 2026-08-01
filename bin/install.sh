@@ -166,12 +166,21 @@ clone_repo() {
   git --git-dir="$git_dir" remote add origin "$ssh_uri"
 
   if [[ -n "${GH_TOKEN:-${GITHUB_TOKEN:-}}" ]]; then
-    # Use HTTPS + token via http.extraHeader (token never stored in git config or remote URL)
+    # Use HTTPS + GIT_ASKPASS to authenticate (token never stored in git config or remote URL)
     local token="${GH_TOKEN:-$GITHUB_TOKEN}"
     local https_uri="https://github.com/$GITHUB_USERNAME/$repo.git"
+    local askpass
+    askpass="$(mktemp)"
+    chmod 700 "$askpass"
+    # Write a tiny script that answers git's username/password prompts
+    printf '#!/bin/sh\ncase "$1" in *Username*) echo oauth2;; *Password*) echo "%s";; esac\n' "$token" > "$askpass"
+    # Clean up temp file on exit
+    trap "rm -f '$askpass'" RETURN
     git --git-dir="$git_dir" remote set-url origin "$https_uri"
-    git --git-dir="$git_dir" -c "http.extraHeader=Authorization: token $token" fetch
+    GIT_ASKPASS="$askpass" git --git-dir="$git_dir" fetch
     git --git-dir="$git_dir" remote set-url origin "$ssh_uri"
+    rm -f "$askpass"
+    trap - RETURN
   else
     git --git-dir="$git_dir" fetch
   fi
