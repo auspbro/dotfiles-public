@@ -771,9 +771,18 @@ function setup_lazyvim() {
         fi
     done
 
+    # Bootstrap lazy.nvim and install all plugins headlessly.
+    # This avoids "fatal: working tree already exists" errors when the user
+    # opens nvim with toggle-dotfiles active (GIT_WORK_TREE=~).
+    printf "Installing LazyVim plugins (this may take a minute)...\n"
+    if nvim --headless "+Lazy! sync" +qa 2>/dev/null; then
+        printf "\033[32mLazyVim plugins installed successfully.\033[0m\n"
+    else
+        printf "\033[33mPlugin sync returned non-zero (this is usually fine on first install).\033[0m\n"
+    fi
+
     echo ""
     printf "\033[32mLazyVim Setup Complete.\033[0m\n"
-    printf "\033[32mNext time you run 'nvim', LazyVim will bootstrap and install all plugins.\033[0m\n"
     return 0
 }
 
