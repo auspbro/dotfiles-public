@@ -711,9 +711,11 @@ function setup_lazyvim() {
     # --- Dependency Check ---
     if ! command -v nvim &> /dev/null; then
         printf "\033[31mNeovim is not installed. Please run the Neovim installer first.\033[0m\n"
+        return 1
     fi
     if ! command -v git &> /dev/null; then
         printf "\033[31mGit is not installed. It is required to install LazyVim.\033[0m\n"
+        return 1
     fi
     printf "\033[32mDependencies met (Neovim and Git are installed).\033[0m\n"
 
@@ -734,16 +736,24 @@ function setup_lazyvim() {
         printf "Backing it up to $backup_dir\n"
         if ! mv "$NVIM_CONFIG_DIR" "$backup_dir"; then
             printf "\033[31mFailed to back up existing Neovim configuration.\033[0m\n"
+            return 1
         fi
     fi
 
-    # Clone the LazyVim starter template
+    # Clone to a temp dir first — git clone fails if run inside a bare repo's
+    # working tree (e.g. dotfiles-public with GIT_WORK_TREE=~).
     printf "Cloning the LazyVim starter template...\n"
-    if ! git clone https://github.com/LazyVim/starter "$NVIM_CONFIG_DIR"; then
+    local tmpdir
+    tmpdir="$(mktemp -d)"
+    if ! git clone --depth=1 https://github.com/LazyVim/starter "$tmpdir/nvim"; then
         printf "\033[31mFailed to clone LazyVim starter repository.\033[0m\n"
+        rm -rf "$tmpdir"
+        return 1
     fi
-    # Remove the .git directory so the user can initialize their own git repo for their config
-    rm -rf "$NVIM_CONFIG_DIR/.git"
+    rm -rf "$tmpdir/nvim/.git"
+    mkdir -p "$(dirname "$NVIM_CONFIG_DIR")"
+    mv "$tmpdir/nvim" "$NVIM_CONFIG_DIR"
+    rm -rf "$tmpdir"
     printf "LazyVim starter template installed successfully.\n"
 
     # Optional but highly recommended: back up existing data/state directories
