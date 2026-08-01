@@ -7,6 +7,9 @@
 #   GH_TOKEN=ghp_xxxx bash -c "$(curl -fsSL ...)"
 # Token needs: admin:public_key (SSH key registration) + repo (clone access).
 #
+# Set APT_MIRROR to switch apt sources before the first apt-get update:
+#   APT_MIRROR=mirrors.aliyun.com bash -c "$(curl -fsSL ...)"
+#
 # Requires: GITHUB_USERNAME environment variable set.
 # Supports: macOS, Ubuntu/Debian, Windows WSL.
 
@@ -51,7 +54,31 @@ install_base_deps_macos() {
   fi
 }
 
+# Replace apt sources with a faster mirror for users in China.
+# Set APT_MIRROR=mirrors.aliyun.com (or mirrors.tuna.tsinghua.edu.cn, etc.)
+# before running install.sh to enable. Skipped if unset.
+configure_apt_mirror() {
+  local mirror="${APT_MIRROR:-}"
+  [[ -z "$mirror" ]] && return 0
+  [[ ! -f /etc/apt/sources.list ]] && return 0
+
+  if grep -q "$mirror" /etc/apt/sources.list 2>/dev/null; then
+    echo "Apt mirror already configured: $mirror"
+    return 0
+  fi
+
+  echo "Switching apt sources to $mirror ..."
+  sudo cp /etc/apt/sources.list /etc/apt/sources.list.bak
+  sudo sed -i \
+    -e "s|http://archive.ubuntu.com/ubuntu|http://$mirror/ubuntu|g" \
+    -e "s|http://security.ubuntu.com/ubuntu|http://$mirror/ubuntu|g" \
+    -e "s|http://deb.debian.org/debian|http://$mirror/debian|g" \
+    -e "s|http://security.debian.org/debian-security|http://$mirror/debian-security|g" \
+    /etc/apt/sources.list
+}
+
 install_base_deps_linux() {
+  configure_apt_mirror
   if ! command -v git &>/dev/null || ! command -v curl &>/dev/null; then
     sudo apt-get update
     sudo apt-get install -y git curl
