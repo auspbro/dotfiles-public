@@ -825,6 +825,7 @@ case "$PLATFORM" in
     install_bat
     install_gh
     install_fzf
+    install_exa
     install_fx
     install_herdr
     patch_ssh
