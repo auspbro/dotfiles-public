@@ -4,6 +4,11 @@
 
 set -xueE -o pipefail
 
+# Clear dotfiles bare repo env vars so git commands work normally.
+# Without this, 'git clone' fails with "fatal: working tree already exists"
+# because GIT_WORK_TREE=~ makes git think $HOME is a repo working tree.
+unset GIT_DIR GIT_WORK_TREE
+
 # ── Platform detection ──────────────────────────────────────
 
 detect_platform() {
