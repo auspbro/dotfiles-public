@@ -27,7 +27,7 @@ zstyle ':z4h:'                  prompt-height          4
 [[ -n $SSH_CONNECTION ]] && zstyle ':z4h:' start-tmux command tmux -u new -A -s z4h || zstyle ':z4h:' start-tmux no
 # zstyle ':z4h:'                term-vresize           top
 
-if [[ -e ~/.ssh/id_rsa ]]; then
+if [[ -e ~/.ssh/id_rsa || -e ~/.ssh/id_ed25519 ]]; then
   zstyle ':z4h:ssh-agent:' start      yes
   zstyle ':z4h:ssh-agent:' extra-args -t 20h
 else
@@ -46,7 +46,7 @@ fi
 }
 
 if [[ $TERM == xterm-256color && ! -v ZSH_SCRIPT && ! -v ZSH_EXECUTION_STRING &&
-      -z $SSH_CONNECTION && P9K_SSH -ne 1 && -e ~/.ssh/id_rsa && -e /proc/uptime &&
+      -z $SSH_CONNECTION && P9K_SSH -ne 1 && (-e ~/.ssh/id_rsa || -e ~/.ssh/id_ed25519) && -e /proc/uptime &&
       ! (/tmp/wiped-after-boot -nt /proc/uptime) && -r /proc/version &&
       "$(</proc/version)" == *Microsoft* ]]; then
   print -Pr -- "%F{3}zsh%f: wiping %U/tmp%u ..."
