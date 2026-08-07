@@ -10,7 +10,9 @@ sidebar_width = 32
 sidebar_min_width = 0
 sidebar_max_width = 36
 pane_gaps = false
+pane_scrollbars = false
 
+show_agent_labels_on_pane_borders = true
 [ui.sidebar.agents]
 row_gap = 0
 rows = [
@@ -34,3 +36,6 @@ key = "prefix+f"
 type = "plugin_action"
 command = "herdr-floax.toggle"
 description = "Toggle floating pane"
+
+[ui.toast]
+delivery = "herdr"
