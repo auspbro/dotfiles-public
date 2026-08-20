@@ -205,7 +205,7 @@ sidebar_min_width = 0
 pane_scrollbars = false
 
 # Keep split panes visually separated instead of sharing divider borders.
-# pane_gaps = true
+pane_gaps = false
 
 # Show detected/reported agent labels in split pane borders when no manual pane name is set.
 # show_agent_labels_on_pane_borders = false
@@ -327,3 +327,9 @@ pane_history = false
 # Maximum scrollback buffer size in bytes retained per pane terminal.
 # Matches Ghostty's default scrollback-limit behavior.
 # scrollback_limit_bytes = 10000000
+
+[[keys.command]]
+key = ["prefix+e", "ctrl+alt+e"]     # 两套都能触发
+type = "plugin_action"
+command = "herdr-sidebar.open-sidebar"
+description = "toggle herdr-sidebar"
