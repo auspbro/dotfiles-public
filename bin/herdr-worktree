@@ -135,8 +135,21 @@ fi
 if [ "$MODE" = "clean" ]; then
   TDIR="$(task_dir "$REPO" "$BRANCH")"
   WS="$(cat "$TDIR/ws" 2>/dev/null || true)"
+  if [ -z "$WS" ]; then
+    # fallback: find herdr workspace by label + repo root
+    WS="$(herdr workspace list 2>/dev/null \
+           | grep -o '"workspace_id":"[^"]*"' \
+           | sed 's/"workspace_id":"\(.*\)"/\1/' \
+           | while read -r wid; do
+               info="$(herdr workspace get "$wid" 2>/dev/null)"
+               label="$(json_val label "$info")"
+               [ "$label" = "$(slug "$BRANCH")" ] || continue
+               root="$(json_val repo_root "$info")"
+               [ "$root" = "$REPO" ] && { echo "$wid"; break; }
+             done)"
+  fi
   if [ -n "$WS" ]; then
-    herdr worktree remove --workspace "$WS" 2>/dev/null || true
+    herdr workspace close "$WS" >/dev/null 2>&1 || true
   fi
   # fallback: find worktree path by branch
   WT_PATH="$(git -C "$REPO" worktree list --porcelain \
@@ -145,15 +158,17 @@ if [ "$MODE" = "clean" ]; then
     git -C "$REPO" worktree remove "$WT_PATH" 2>/dev/null || true
   fi
   git -C "$REPO" worktree prune 2>/dev/null || true
-  # only delete branch if merged
-  if git -C "$REPO" branch --merged main 2>/dev/null | grep -q "$BRANCH"; then
+  # only delete branch if merged into default branch
+  DEFAULT_BRANCH="$(git -C "$REPO" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')"
+  DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
+  if git -C "$REPO" branch --merged "$DEFAULT_BRANCH" 2>/dev/null | grep -q "$BRANCH"; then
     git -C "$REPO" branch -d "$BRANCH" 2>/dev/null || true
     # only push-delete if remote branch exists (avoids hanging on slow remotes)
     if git -C "$REPO" ls-remote --heads origin "$BRANCH" 2>/dev/null | grep -q "$BRANCH"; then
       timeout 15 git -C "$REPO" push origin --delete "$BRANCH" 2>/dev/null || true
     fi
   else
-    echo "branch $BRANCH not merged to main, keeping local branch (worktree removed)"
+    echo "branch $BRANCH not merged to $DEFAULT_BRANCH, keeping local branch (worktree removed)"
   fi
   rm -rf "$TDIR"
   exit 0
