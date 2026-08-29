@@ -2,10 +2,12 @@
 # herdr-worktree - Herdr worktree multi-agent task dispatch
 #
 # Usage:
-#   herdr-worktree <repo> <branch> <prompt> [agent-cmd]   # create worktree + start agent
-#   herdr-worktree <repo> --wait <branch>                  # wait for agent + read output
-#   herdr-worktree <repo> --clean <branch>                 # remove worktree + branch + prune
-#   herdr-worktree <repo> --list                           # list active tasks
+#   herdr-worktree [<repo>] <branch> <prompt> [agent-cmd]   # create worktree + start agent
+#   herdr-worktree [<repo>] --wait <branch>                  # wait for agent + read output
+#   herdr-worktree [<repo>] --clean <branch>                 # remove worktree + branch + prune
+#   herdr-worktree [<repo>] --list                           # list active tasks
+#
+# <repo> is optional when already inside a git repo.
 #
 # Dependencies: herdr, git
 # State is stored in $XDG_STATE_HOME/herdr-worktree/ (default: ~/.local/state/herdr-worktree/)
@@ -37,10 +39,12 @@ json_val() {
 usage() {
   cat <<'EOF'
 Usage:
-  herdr-worktree <repo> <branch> <prompt> [agent-cmd]   # create worktree + start agent
-  herdr-worktree <repo> --wait <branch>                  # wait for agent + read output
-  herdr-worktree <repo> --clean <branch>                 # remove worktree + branch + prune
-  herdr-worktree <repo> --list                           # list active tasks
+  herdr-worktree [<repo>] <branch> <prompt> [agent-cmd]   # create worktree + start agent
+  herdr-worktree [<repo>] --wait <branch>                  # wait for agent + read output
+  herdr-worktree [<repo>] --clean <branch>                 # remove worktree + branch + prune
+  herdr-worktree [<repo>] --list                           # list active tasks
+
+<repo> is optional when already inside a git repo.
 EOF
   exit 1
 }
@@ -54,11 +58,19 @@ task_dir() {
 }
 
 # ---------- arg parsing ----------
-[ $# -ge 2 ] || usage
+[ $# -ge 1 ] || usage
 
-REPO="$1"; shift
-REPO="$(cd "$REPO" 2>/dev/null && pwd -P)" || { echo "error: not a directory: $REPO"; exit 1; }
-git -C "$REPO" rev-parse --show-toplevel >/dev/null 2>&1 || { echo "error: not a git repo: $REPO"; exit 1; }
+# detect repo: first arg is a repo path if it's a directory containing a git repo
+REPO=""
+if [ -d "$1" ] && git -C "$1" rev-parse --show-toplevel >/dev/null 2>&1; then
+  REPO="$(cd "$1" && pwd -P)"; shift
+fi
+# fallback: auto-detect from $PWD
+if [ -z "$REPO" ]; then
+  REPO="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null)" || {
+    echo "error: not in a git repo, pass <repo> as first argument"; exit 1
+  }
+fi
 
 cmd="${1:?}"; shift || usage
 case "$cmd" in
