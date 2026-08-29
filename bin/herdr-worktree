@@ -78,7 +78,7 @@ case "$cmd" in
   --clean)  MODE="clean";    BRANCH="${1:?branch required}";;
   --list)   MODE="list";;
   -h|--help) usage;;
-  *)        MODE="dispatch"; BRANCH="$cmd"; PROMPT="${1:?prompt required}"; AGENT="${2:-claude}";;
+  *)        MODE="dispatch"; BRANCH="$cmd"; PROMPT="${1:?prompt required}"; AGENT="${2:-}";;
 esac
 
 # ---------- dispatch ----------
@@ -86,6 +86,8 @@ if [ "$MODE" = "dispatch" ]; then
   LABEL="$(slug "$BRANCH")"
   TDIR="$(task_dir "$REPO" "$BRANCH")"
   mkdir -p "$TDIR"
+  # unique agent name per task to avoid conflicts
+  AGENT_NAME="${AGENT:-claude-$LABEL}"
 
   OUT=$(herdr worktree create --cwd "$REPO" \
         --branch "$BRANCH" --label "$LABEL" --no-focus --json)
@@ -100,7 +102,7 @@ if [ "$MODE" = "dispatch" ]; then
   # wait for pane shell to be ready
   sleep 3
 
-  herdr agent start "$AGENT" --kind "$AGENT" --pane "$PANE" --timeout 120000 || {
+  herdr agent start "$AGENT_NAME" --kind "${AGENT:-claude}" --pane "$PANE" --timeout 120000 || {
     herdr agent send-keys "$PANE" Enter
     sleep 2
   }
@@ -146,7 +148,10 @@ if [ "$MODE" = "clean" ]; then
   # only delete branch if merged
   if git -C "$REPO" branch --merged main 2>/dev/null | grep -q "$BRANCH"; then
     git -C "$REPO" branch -d "$BRANCH" 2>/dev/null || true
-    git -C "$REPO" push origin --delete "$BRANCH" 2>/dev/null || true
+    # only push-delete if remote branch exists (avoids hanging on slow remotes)
+    if git -C "$REPO" ls-remote --heads origin "$BRANCH" 2>/dev/null | grep -q "$BRANCH"; then
+      timeout 15 git -C "$REPO" push origin --delete "$BRANCH" 2>/dev/null || true
+    fi
   else
     echo "branch $BRANCH not merged to main, keeping local branch (worktree removed)"
   fi
