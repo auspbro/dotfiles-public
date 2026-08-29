@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+# herdr-worktree - Herdr worktree multi-agent task dispatch
+#
+# Usage:
+#   herdr-worktree <repo> <branch> <prompt> [agent-cmd]   # create worktree + start agent
+#   herdr-worktree <repo> --wait <branch>                  # wait for agent + read output
+#   herdr-worktree <repo> --clean <branch>                 # remove worktree + branch + prune
+#   herdr-worktree <repo> --list                           # list active tasks
+#
+# Dependencies: herdr, git
+# State is stored in $XDG_STATE_HOME/herdr-worktree/ (default: ~/.local/state/herdr-worktree/)
+
+set -euo pipefail
+
+# ---------- state directory ----------
+STATE_DIR="${HERDR_WORKTREE_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/herdr-worktree}"
+TIMEOUT="${HERDR_AGENT_TIMEOUT:-1800000}"
+
+# ---------- helpers ----------
+slug() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_-' '-' | cut -c1-31; }
+
+# hash a repo path to a short, filesystem-safe string
+repo_hash() { printf '%s' "$1" | shasum -a 256 2>/dev/null | cut -c1-12; }
+
+# parse a single key from herdr JSON output (no jq dependency)
+json_val() {
+  local key="$1" input="${2:-}"
+  if [ -n "$input" ]; then
+    printf '%s' "$input" | grep -o "\"$key\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" \
+      | head -1 | sed 's/.*:[[:space:]]*"\(.*\)"/\1/'
+  else
+    grep -o "\"$key\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" \
+      | head -1 | sed 's/.*:[[:space:]]*"\(.*\)"/\1/'
+  fi
+}
+
+usage() {
+  cat <<'EOF'
+Usage:
+  herdr-worktree <repo> <branch> <prompt> [agent-cmd]   # create worktree + start agent
+  herdr-worktree <repo> --wait <branch>                  # wait for agent + read output
+  herdr-worktree <repo> --clean <branch>                 # remove worktree + branch + prune
+  herdr-worktree <repo> --list                           # list active tasks
+EOF
+  exit 1
+}
+
+# ---------- state paths ----------
+task_dir() {
+  local repo="$1" branch="$2"
+  local h; h="$(repo_hash "$repo")"
+  local s; s="$(slug "$branch")"
+  echo "$STATE_DIR/$h/$s"
+}
+
+# ---------- arg parsing ----------
+[ $# -ge 2 ] || usage
+
+REPO="$1"; shift
+REPO="$(cd "$REPO" 2>/dev/null && pwd -P)" || { echo "error: not a directory: $REPO"; exit 1; }
+git -C "$REPO" rev-parse --show-toplevel >/dev/null 2>&1 || { echo "error: not a git repo: $REPO"; exit 1; }
+
+cmd="${1:?}"; shift || usage
+case "$cmd" in
+  --wait)   MODE="wait";     BRANCH="${1:?branch required}";;
+  --clean)  MODE="clean";    BRANCH="${1:?branch required}";;
+  --list)   MODE="list";;
+  -h|--help) usage;;
+  *)        MODE="dispatch"; BRANCH="$cmd"; PROMPT="${1:?prompt required}"; AGENT="${2:-claude}";;
+esac
+
+# ---------- dispatch ----------
+if [ "$MODE" = "dispatch" ]; then
+  LABEL="$(slug "$BRANCH")"
+  TDIR="$(task_dir "$REPO" "$BRANCH")"
+  mkdir -p "$TDIR"
+
+  OUT=$(herdr worktree create --cwd "$REPO" \
+        --branch "$BRANCH" --label "$LABEL" --no-focus --json)
+  WS=$(json_val "open_workspace_id" "$OUT")
+  [ -z "$WS" ] && WS=$(json_val "workspace_id" "$OUT")
+  PANE=$(json_val "pane_id" "$OUT")
+  PATH_=$(json_val "path" "$OUT")
+
+  echo "worktree: $PATH_"
+  echo "workspace: $WS   pane: $PANE"
+
+  # wait for pane shell to be ready
+  sleep 3
+
+  herdr agent start "$AGENT" --kind "$AGENT" --pane "$PANE" --timeout 120000 || {
+    herdr agent send-keys "$PANE" Enter
+    sleep 2
+  }
+  herdr agent prompt "$PANE" "$PROMPT"
+  herdr agent wait "$PANE" --until idle --timeout "$TIMEOUT" || true
+
+  # persist mapping
+  printf '%s' "$WS"   > "$TDIR/ws"
+  printf '%s' "$PANE" > "$TDIR/pane"
+  printf '%s' "$PATH_"> "$TDIR/path"
+  printf '{"repo":"%s","branch":"%s","workspace":"%s","pane":"%s","path":"%s","ts":"%s"}\n' \
+    "$REPO" "$BRANCH" "$WS" "$PANE" "$PATH_" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    >> "$STATE_DIR/tasks.jsonl"
+
+  echo "dispatched. use:  herdr-worktree $REPO --wait $BRANCH"
+  exit 0
+fi
+
+# ---------- wait ----------
+if [ "$MODE" = "wait" ]; then
+  TDIR="$(task_dir "$REPO" "$BRANCH")"
+  PANE="$(cat "$TDIR/pane" 2>/dev/null || true)"
+  [ -z "$PANE" ] && { echo "no pane recorded for $BRANCH"; exit 1; }
+  herdr agent wait "$PANE" --until done --timeout "$TIMEOUT" || true
+  herdr agent read "$PANE" --source recent --lines 80
+  exit 0
+fi
+
+# ---------- clean ----------
+if [ "$MODE" = "clean" ]; then
+  TDIR="$(task_dir "$REPO" "$BRANCH")"
+  WS="$(cat "$TDIR/ws" 2>/dev/null || true)"
+  if [ -n "$WS" ]; then
+    herdr worktree remove --workspace "$WS" 2>/dev/null || true
+  fi
+  # fallback: find worktree path by branch
+  WT_PATH="$(git -C "$REPO" worktree list --porcelain \
+             | awk -v b="$BRANCH" '/^worktree /{p=$2} /^branch /&&index($0,b){print p; exit}')"
+  if [ -n "$WT_PATH" ] && [ "$WT_PATH" != "$REPO" ]; then
+    git -C "$REPO" worktree remove "$WT_PATH" 2>/dev/null || true
+  fi
+  git -C "$REPO" worktree prune 2>/dev/null || true
+  # only delete branch if merged
+  if git -C "$REPO" branch --merged main 2>/dev/null | grep -q "$BRANCH"; then
+    git -C "$REPO" branch -d "$BRANCH" 2>/dev/null || true
+    git -C "$REPO" push origin --delete "$BRANCH" 2>/dev/null || true
+  else
+    echo "branch $BRANCH not merged to main, keeping local branch (worktree removed)"
+  fi
+  rm -rf "$TDIR"
+  exit 0
+fi
+
+# ---------- list ----------
+if [ "$MODE" = "list" ]; then
+  RHASH="$(repo_hash "$REPO")"
+  TASKS_DIR="$STATE_DIR/$RHASH"
+  if [ ! -d "$TASKS_DIR" ]; then
+    echo "no tasks for $REPO"
+    exit 0
+  fi
+  printf "%-24s %-20s %s\n" "BRANCH" "PANE" "WORKTREE"
+  printf "%-24s %-20s %s\n" "------" "----" "--------"
+  for d in "$TASKS_DIR"/*/; do
+    [ -d "$d" ] || continue
+    branch="$(basename "$d")"
+    pane="$(cat "$d/pane" 2>/dev/null || echo "-")"
+    path="$(cat "$d/path" 2>/dev/null || echo "-")"
+    printf "%-24s %-20s %s\n" "$branch" "$pane" "$path"
+  done
+  exit 0
+fi
