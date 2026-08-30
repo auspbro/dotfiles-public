@@ -24,7 +24,7 @@ zstyle ':z4h:'                  prompt-height          4
 # zstyle ':z4h:'                start-tmux             no
 # zstyle ':z4h:'                start-tmux             command tmux -u new -A -D -t z4h
 # zstyle ':z4h:'                start-tmux             command tmux -u new -A -s z4h
-[[ -n $SSH_CONNECTION ]] && zstyle ':z4h:' start-tmux command tmux -u new -A -s z4h || zstyle ':z4h:' start-tmux no
+# [[ -n $SSH_CONNECTION ]] && zstyle ':z4h:' start-tmux command tmux -u new -A -s z4h || zstyle ':z4h:' start-tmux no
 # zstyle ':z4h:'                term-vresize           top
 
 if [[ -e ~/.ssh/id_rsa || -e ~/.ssh/id_ed25519 ]]; then
