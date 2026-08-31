@@ -10,6 +10,10 @@ if [ -n "${ZSH_VERSION-}" ]; then
   : ${ZDOTDIR:=~}
   setopt no_global_rcs
   [[ ! -e ~/.zshenv-private ]] || source ~/.zshenv-private
+
+  # 确保非交互式shell也有正确的PATH（mosh-server需要）
+  export PATH="/usr/local/bin:/usr/local/sbin:$HOME/bin:$HOME/.local/bin:$PATH"
+
   if [[ -o no_interactive && -z "${Z4H_BOOTSTRAPPING-}" ]]; then
     return
   fi
