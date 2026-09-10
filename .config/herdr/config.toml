@@ -241,6 +241,7 @@ show_agent_labels_on_pane_borders = true
 # Custom values reported through workspace metadata use a $name token, for example $jj_status.
 # Inline token styles accept strict #RGB/#RRGGBB foregrounds plus bold and dim booleans.
 agent_panel_sort = "spaces"
+status_indicators = "symbols"
 [ui.sidebar.spaces]
 # Blank rows between space entries. Set to 1 to restore the previous spacing.
 # row_gap = 0

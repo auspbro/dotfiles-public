@@ -20,6 +20,10 @@ zstyle ':z4h:'                  term-shell-integration yes
 zstyle ':z4h:'                  propagate-cwd          yes
 zstyle ':z4h:'                  prompt-height          4
 
+# Herdr is already a multiplexer; skip z4h tmux inside herdr panes so
+# herdr can detect agent processes (e.g. claude) directly.
+[[ "${HERDR_ENV:-}" == "1" ]] && zstyle ':z4h:' start-tmux no
+
 # zstyle ':z4h:direnv'          enable                 yes
 # zstyle ':z4h:'                start-tmux             no
 # zstyle ':z4h:'                start-tmux             command tmux -u new -A -D -t z4h
@@ -410,3 +414,6 @@ export PATH=$HOME/.mimocode/bin:$PATH
 [[ -f ~/claude-infra-env/bin/activate ]] && source ~/claude-infra-env/bin/activate
 
 alias cc='claude --dangerously-skip-permissions'
+
+# opencode
+export PATH=$HOME/.opencode/bin:$PATH
